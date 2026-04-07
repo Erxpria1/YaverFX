@@ -165,103 +165,167 @@ export default function PomodoroTimer() {
   const totalDuration = mode === "work" ? WORK_DURATION : BREAK_DURATION;
   const progress = (totalDuration - timeLeft) / totalDuration;
   
-  const svgSize = 180;
-  const radius = (svgSize / 2) - 15;
+  const svgSize = 220;
+  const radius = (svgSize / 2) - 20;
   const center = svgSize / 2;
-  const strokeWidth = 8;
   const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference * (1 - progress);
 
   const accentColor = "var(--theme-accent)";
   const textColor = "var(--theme-text)";
-  const bgColor = "var(--theme-bg)";
 
   return (
-    <div className="flex flex-col items-center gap-6 sm:gap-8 md:gap-10 py-4">
+    <div className="flex flex-col items-center gap-8 py-4">
       {/* Mode Tabs */}
-      <div className="flex gap-3">
-        <span
-          className="rounded-full px-5 py-2 text-sm font-medium transition-all duration-700"
+      <div className="flex gap-2 bg-[var(--theme-secondary)] p-1 rounded-full">
+        <button
+          onClick={() => { setMode("work"); setTimeLeft(WORK_DURATION); }}
+          className="px-6 py-2 rounded-full text-sm font-medium transition-all duration-300"
           style={{
             backgroundColor: mode === "work" ? accentColor : "transparent",
-            color: "#fff",
-            opacity: mode === "work" ? 0.2 : 0.5,
+            color: mode === "work" ? "#fff" : textColor,
           }}
         >
           Çalışma
-        </span>
-        <span
-          className="rounded-full px-5 py-2 text-sm font-medium transition-all duration-700"
+        </button>
+        <button
+          onClick={() => { setMode("break"); setTimeLeft(BREAK_DURATION); }}
+          className="px-6 py-2 rounded-full text-sm font-medium transition-all duration-300"
           style={{
             backgroundColor: mode === "break" ? accentColor : "transparent",
-            color: "#fff",
-            opacity: mode === "break" ? 0.2 : 0.5,
+            color: mode === "break" ? "#fff" : textColor,
           }}
         >
           Mola
-        </span>
+        </button>
       </div>
 
-      {/* Timer Ring */}
+      {/* Timer Container */}
       <div 
         className="relative flex items-center justify-center"
-        style={{ width: svgSize, height: svgSize }}
+        style={{ width: svgSize + 60, height: svgSize + 60 }}
       >
-        {/* SVG Ring */}
+        {/* Outer breathing ring - animated glow */}
+        <div 
+          className="absolute rounded-full transition-all duration-[2000ms]"
+          style={{
+            width: svgSize + 40,
+            height: svgSize + 40,
+            background: `radial-gradient(circle, ${accentColor}20 0%, transparent 70%)`,
+            animation: isRunning ? "pulse-outer 3s ease-in-out infinite" : "none",
+          }}
+        />
+
+        {/* Middle ring - subtle pulse */}
+        <div 
+          className="absolute rounded-full"
+          style={{
+            width: svgSize + 20,
+            height: svgSize + 20,
+            border: `1px solid ${accentColor}30`,
+            animation: isRunning ? "pulse-middle 2s ease-in-out infinite" : "none",
+          }}
+        />
+
+        {/* Main SVG Ring */}
         <svg 
           width={svgSize} 
           height={svgSize} 
           viewBox={`0 0 ${svgSize} ${svgSize}`}
-          className="absolute -rotate-90"
+          className="relative"
         >
           <defs>
-            <linearGradient id="timerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor={accentColor} stopOpacity="0.8" />
-              <stop offset="100%" stopColor={accentColor} />
+            {/* Main gradient */}
+            <linearGradient id="mainGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor={accentColor} />
+              <stop offset="100%" stopColor={accentColor} stopOpacity="0.6" />
             </linearGradient>
+            
+            {/* Glow filter */}
+            <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+              <feMerge>
+                <feMergeNode in="coloredBlur"/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
           </defs>
 
-          {/* Background track */}
+          {/* Background ring - dark track */}
           <circle
             cx={center}
             cy={center}
             r={radius}
             fill="none"
             stroke={textColor}
-            strokeWidth={strokeWidth}
-            style={{ opacity: 0.15 }}
+            strokeWidth="3"
+            style={{ opacity: 0.1 }}
           />
 
-          {/* Progress ring */}
+          {/* Progress ring with glow */}
           <circle
             cx={center}
             cy={center}
             r={radius}
             fill="none"
-            stroke="url(#timerGradient)"
-            strokeWidth={strokeWidth}
+            stroke="url(#mainGradient)"
+            strokeWidth="6"
             strokeLinecap="round"
+            filter="url(#glow)"
             style={{
               strokeDasharray: circumference,
-              strokeDashoffset,
-              transition: "stroke-dashoffset 0.2s linear",
+              strokeDashoffset: circumference * (1 - progress),
+              transition: "stroke-dashoffset 0.5s ease-out",
+              transform: "rotate(-90deg)",
+              transformOrigin: "center",
             }}
           />
+
+          {/* Animated dots on the ring when running */}
+          {isRunning && (
+            <circle
+              cx={center}
+              cy={center}
+              r={radius}
+              fill="none"
+              stroke={accentColor}
+              strokeWidth="6"
+              strokeLinecap="round"
+              strokeDasharray="8 20"
+              style={{
+                strokeDashoffset: circumference * (1 - progress),
+                transition: "stroke-dashoffset 0.5s ease-out",
+                transform: "rotate(-90deg)",
+                transformOrigin: "center",
+                opacity: 0.6,
+                animation: "dash-move 1s linear infinite",
+              }}
+            />
+          )}
         </svg>
 
-        {/* Center Display */}
-        <div className="flex flex-col items-center">
+        {/* Center Content */}
+        <div className="absolute flex flex-col items-center">
+          {/* Timer Display */}
           <span 
-            className="text-4xl sm:text-5xl md:text-6xl font-mono font-bold tracking-wider"
-            style={{ color: textColor }}
+            className="text-5xl sm:text-6xl font-bold tracking-tight"
+            style={{ 
+              color: textColor,
+              fontFamily: "system-ui, -apple-system, sans-serif",
+              letterSpacing: "0.05em",
+            }}
           >
             {display}
           </span>
+          
+          {/* Status Label */}
           <span 
-            className="mt-1 text-xs font-medium uppercase tracking-widest"
-            style={{ color: accentColor }}
+            className="mt-1 text-sm font-medium tracking-widest uppercase"
+            style={{ 
+              color: accentColor,
+              letterSpacing: "0.2em",
+            }}
           >
-            {mode === "work" ? "odak" : "mola"}
+            {mode === "work" ? (isRunning ? "odaklan" : "hazır") : (isRunning ? "dinlen" : "mola")}
           </span>
         </div>
       </div>
@@ -270,26 +334,57 @@ export default function PomodoroTimer() {
       <div className="flex gap-4">
         <button
           onClick={toggleTimer}
-          className="rounded-full px-10 py-3.5 text-sm font-semibold transition-all duration-300 active:scale-95 touch-manipulation"
+          className="px-12 py-4 rounded-full text-base font-semibold transition-all duration-300 active:scale-95 touch-manipulation shadow-lg"
           style={{
             backgroundColor: accentColor,
             color: "#fff",
+            boxShadow: `0 4px 20px ${accentColor}40`,
           }}
         >
           {isRunning ? "Duraklat" : "Başlat"}
         </button>
         <button
           onClick={resetTimer}
-          className="rounded-full px-10 py-3.5 text-sm font-semibold transition-all duration-300 active:scale-95 touch-manipulation"
+          className="px-8 py-4 rounded-full text-base font-medium transition-all duration-300 active:scale-95 touch-manipulation"
           style={{
             border: `1px solid ${textColor}`,
             color: textColor,
-            opacity: 0.5,
+            opacity: 0.4,
           }}
         >
           Sıfırla
         </button>
       </div>
+
+      {/* CSS Animations */}
+      <style jsx>{`
+        @keyframes pulse-outer {
+          0%, 100% { 
+            transform: scale(1); 
+            opacity: 0.3;
+          }
+          50% { 
+            transform: scale(1.1); 
+            opacity: 0.6;
+          }
+        }
+        
+        @keyframes pulse-middle {
+          0%, 100% { 
+            transform: scale(1); 
+            opacity: 0.3;
+          }
+          50% { 
+            transform: scale(1.05); 
+            opacity: 0.6;
+          }
+        }
+        
+        @keyframes dash-move {
+          0% { stroke-dashoffset: 0; }
+          100% { stroke-dashoffset: -56; }
+        }
+      `}</style>
     </div>
   );
 }
