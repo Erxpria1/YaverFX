@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import PomodoroTimer from "./components/PomodoroTimer";
 import TaskList from "./components/TaskList";
 import AmbientSounds from "./components/AmbientSounds";
@@ -9,6 +9,21 @@ import RewardSystem from "./components/RewardSystem";
 import ThemeSelector from "./components/ThemeSelector";
 
 type Page = "timer" | "tasks" | "sounds" | "blocker" | "rewards";
+
+// Stats data (can be connected to real data later)
+const STATS = {
+  focusTime: 127,
+  tasksDone: 23,
+  streak: 5,
+  points: 450,
+};
+
+// Trending items
+const TRENDING_ITEMS = [
+  { id: "pomodoro", label: "Pomodoro Maratonu", onClick: () => {} },
+  { id: "nature", label: "Orman Sesleri", onClick: () => {} },
+  { id: "deep", label: "Deep Focus", onClick: () => {} },
+];
 
 const TimerIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -55,6 +70,18 @@ const NAV_ITEMS: { id: Page; label: string; icon: React.ReactNode }[] = [
 
 export default function Home() {
   const [currentPage, setCurrentPage] = useState<Page>("timer");
+  const [stats, setStats] = useState(STATS);
+  
+  // Update stats from localStorage or state
+  useEffect(() => {
+    // Could connect to actual data sources here
+    const stored = localStorage.getItem("yaverfx-stats");
+    if (stored) {
+      try {
+        setStats({ ...STATS, ...JSON.parse(stored) });
+      } catch {}
+    }
+  }, []);
   
   const renderPage = () => {
     switch (currentPage) {
@@ -71,12 +98,43 @@ export default function Home() {
 
   return (
     <div className="app-container">
+      {/* Stats Bar */}
+      <div className="stats-bar">
+        <div className="stat-item">
+          <div className="stat-value">{stats.focusTime}</div>
+          <div className="stat-label">dk odak</div>
+        </div>
+        <div className="stat-item">
+          <div className="stat-value">{stats.tasksDone}</div>
+          <div className="stat-label">görev</div>
+        </div>
+        <div className="stat-item">
+          <div className="stat-value">{stats.streak}</div>
+          <div className="stat-label">gün</div>
+        </div>
+        <div className="stat-item">
+          <div className="stat-value">{stats.points}</div>
+          <div className="stat-label">puan</div>
+        </div>
+      </div>
+
+      {/* Header */}
       <header className="app-header">
         <h1 style={{ fontSize: "18px", fontWeight: "600", color: text }}>
           YaverFX
         </h1>
-        <ThemeSelector />
       </header>
+      
+      {/* Trending Bar */}
+      <div className="trending-bar">
+        <span className="trending-label">🔥 Trend</span>
+        {TRENDING_ITEMS.map((item, i) => (
+          <span key={item.id}>
+            <span className="trending-item" onClick={item.onClick}>{item.label}</span>
+            {i < TRENDING_ITEMS.length - 1 && <span className="trending-sep">•</span>}
+          </span>
+        ))}
+      </div>
       
       <main className="app-main">
         {renderPage()}
