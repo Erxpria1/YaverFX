@@ -109,7 +109,6 @@ export default function PomodoroTimer() {
   const handleTimerComplete = useCallback(() => {
     playNotificationSound();
     sendBrowserNotification(mode);
-    // Add reward points if work session completed
     if (mode === "work" && typeof window !== "undefined" && (window as any).addYaverFxPoints) {
       (window as any).addYaverFxPoints();
     }
@@ -166,7 +165,6 @@ export default function PomodoroTimer() {
   const totalDuration = mode === "work" ? WORK_DURATION : BREAK_DURATION;
   const progress = (totalDuration - timeLeft) / totalDuration;
   
-  // Responsive calculations
   const svgSize = 180;
   const radius = (svgSize / 2) - 15;
   const center = svgSize / 2;
@@ -174,55 +172,58 @@ export default function PomodoroTimer() {
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference * (1 - progress);
 
+  const accentColor = "var(--theme-accent)";
+  const textColor = "var(--theme-text)";
+  const bgColor = "var(--theme-bg)";
+
   return (
-    <div className="flex flex-col items-center gap-6 sm:gap-8 md:gap-10">
+    <div className="flex flex-col items-center gap-6 sm:gap-8 md:gap-10 py-4">
+      {/* Mode Tabs */}
       <div className="flex gap-3">
         <span
-          className={`rounded-full px-5 py-2 text-sm font-medium transition-all duration-700 ${
-            mode === "work"
-              ? "bg-rose-500/20 text-rose-400 shadow-lg shadow-rose-500/20"
-              : "text-zinc-600"
-          }`}
+          className="rounded-full px-5 py-2 text-sm font-medium transition-all duration-700"
+          style={{
+            backgroundColor: mode === "work" ? accentColor : "transparent",
+            color: "#fff",
+            opacity: mode === "work" ? 0.2 : 0.5,
+          }}
         >
           Çalışma
         </span>
         <span
-          className={`rounded-full px-5 py-2 text-sm font-medium transition-all duration-700 ${
-            mode === "break"
-              ? "bg-emerald-500/20 text-emerald-400 shadow-lg shadow-emerald-500/20"
-              : "text-zinc-600"
-          }`}
+          className="rounded-full px-5 py-2 text-sm font-medium transition-all duration-700"
+          style={{
+            backgroundColor: mode === "break" ? accentColor : "transparent",
+            color: "#fff",
+            opacity: mode === "break" ? 0.2 : 0.5,
+          }}
         >
           Mola
         </span>
       </div>
 
+      {/* Timer Ring */}
       <div className="relative flex items-center justify-center">
-        {/* Breathing Pastel Glow - Single elegant layer */}
+        {/* Glow effect */}
         <div
-          className={`absolute inset-0 rounded-full blur-2xl transition-colors duration-1000 ${
-            isRunning ? "animate-breathe" : "opacity-10 scale-90"
-          } ${mode === "work" ? "bg-rose-500/30" : "bg-emerald-500/30"}`}
+          className="absolute inset-0 rounded-full blur-3xl transition-all duration-1000"
+          style={{
+            backgroundColor: accentColor,
+            opacity: isRunning ? 0.3 : 0.1,
+            transform: isRunning ? "scale(1)" : "scale(0.9)",
+          }}
         />
 
-        {/* SVG Ring */}
         <svg 
           width={svgSize} 
           height={svgSize} 
           viewBox={`0 0 ${svgSize} ${svgSize}`}
           className="relative z-10 -rotate-90"
         >
-          {/* Defs for gradients */}
           <defs>
-            <linearGradient id="workGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#fb7185" />
-              <stop offset="50%" stopColor="#f43f5e" />
-              <stop offset="100%" stopColor="#e11d48" />
-            </linearGradient>
-            <linearGradient id="breakGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#6ee7b7" />
-              <stop offset="50%" stopColor="#10b981" />
-              <stop offset="100%" stopColor="#059669" />
+            <linearGradient id="timerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor={accentColor} stopOpacity="0.8" />
+              <stop offset="100%" stopColor={accentColor} />
             </linearGradient>
           </defs>
 
@@ -232,20 +233,9 @@ export default function PomodoroTimer() {
             cy={center}
             r={radius}
             fill="none"
-            stroke="currentColor"
+            stroke={textColor}
             strokeWidth={strokeWidth}
-            className="text-zinc-800/80"
-          />
-
-          {/* Inner subtle track */}
-          <circle
-            cx={center}
-            cy={center}
-            r={radius - 15}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1"
-            className="text-zinc-800/40"
+            style={{ opacity: 0.15 }}
           />
 
           {/* Progress ring */}
@@ -254,46 +244,61 @@ export default function PomodoroTimer() {
             cy={center}
             r={radius}
             fill="none"
-            stroke={mode === "work" ? "url(#workGradient)" : "url(#breakGradient)"}
+            stroke="url(#timerGradient)"
             strokeWidth={strokeWidth}
             strokeLinecap="round"
             style={{
               strokeDasharray: circumference,
               strokeDashoffset,
-              transition: "stroke-dashoffset 0.2s linear, stroke 1s ease",
+              transition: "stroke-dashoffset 0.2s linear",
+              filter: `drop-shadow(0 0 8px ${accentColor})`,
             }}
           />
         </svg>
 
-        {/* Center content */}
+        {/* Center Display */}
         <div className="absolute z-20 flex flex-col items-center">
           <span 
-            className="text-4xl sm:text-5xl md:text-6xl font-mono font-semibold tracking-wider text-zinc-100 transition-all duration-700"
+            className="text-4xl sm:text-5xl md:text-6xl font-mono font-bold tracking-wider"
+            style={{ 
+              color: textColor,
+              textShadow: isRunning ? `0 0 20px ${accentColor}` : "none",
+            }}
           >
             {display}
           </span>
-          <span className={`mt-1 text-xs font-medium uppercase tracking-widest transition-colors duration-700 ${
-            mode === "work" ? "text-rose-400/80" : "text-emerald-400/80"
-          }`}>
+          <span 
+            className="mt-1 text-xs font-medium uppercase tracking-widest"
+            style={{ 
+              color: accentColor,
+              opacity: 0.8,
+            }}
+          >
             {mode === "work" ? "odak" : "mola"}
           </span>
         </div>
       </div>
 
+      {/* Control Buttons */}
       <div className="flex gap-4">
         <button
           onClick={toggleTimer}
-          className={`rounded-full px-10 py-3.5 text-sm font-semibold transition-all duration-300 ${
-            isRunning
-              ? "bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:shadow-lg"
-              : "bg-zinc-100 text-zinc-900 hover:bg-white hover:shadow-lg hover:shadow-zinc-100/20"
-          }`}
+          className="rounded-full px-10 py-3.5 text-sm font-semibold transition-all duration-300 active:scale-95 touch-manipulation"
+          style={{
+            backgroundColor: accentColor,
+            color: "#fff",
+          }}
         >
           {isRunning ? "Duraklat" : "Başlat"}
         </button>
         <button
           onClick={resetTimer}
-          className="rounded-full border border-zinc-700 px-10 py-3.5 text-sm font-semibold text-zinc-400 transition-all duration-300 hover:border-zinc-500 hover:text-zinc-200 hover:shadow-lg"
+          className="rounded-full px-10 py-3.5 text-sm font-semibold transition-all duration-300 active:scale-95 touch-manipulation"
+          style={{
+            border: `1px solid ${textColor}`,
+            color: textColor,
+            opacity: 0.5,
+          }}
         >
           Sıfırla
         </button>
