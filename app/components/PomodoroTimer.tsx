@@ -7,6 +7,49 @@ const BREAK_DURATION = 5 * 60;
 
 type Mode = "work" | "break";
 
+interface TimerState {
+  mode: Mode;
+  timeLeft: number;
+  isRunning: boolean;
+  sessionTime: number;
+  endTime: number | null;
+  sessionStart: number;
+}
+
+const DEFAULT_TIMER_STATE: TimerState = {
+  mode: "work",
+  timeLeft: WORK_DURATION,
+  isRunning: false,
+  sessionTime: 0,
+  endTime: null,
+  sessionStart: 0,
+};
+
+function saveTimerState(state: TimerState) {
+  localStorage.setItem("yaverfx-timer", JSON.stringify(state));
+}
+
+function loadTimerState(): TimerState {
+  try {
+    const saved = localStorage.getItem("yaverfx-timer");
+    if (saved) {
+      const state = JSON.parse(saved);
+      // If timer was running, calculate remaining time
+      if (state.isRunning && state.endTime) {
+        const remaining = Math.max(0, Math.round((state.endTime - Date.now()) / 1000));
+        if (remaining === 0) {
+          // Timer completed while away - reset
+          return DEFAULT_TIMER_STATE;
+        }
+        state.timeLeft = remaining;
+        state.sessionStart = Date.now();
+      }
+      return state;
+    }
+  } catch (e) {}
+  return DEFAULT_TIMER_STATE;
+}
+
 function playNotificationSound() {
   try {
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -46,7 +89,6 @@ function sendBrowserNotification(mode: Mode) {
 
 function useStats() {
   const [points, setPoints] = useState(0);
-  const [focusTime, setFocusTime] = useState(0);
   
   useEffect(() => {
     const updateStats = () => {
@@ -54,7 +96,6 @@ function useStats() {
       if (stored) {
         const stats = JSON.parse(stored);
         setPoints(stats.points || 0);
-        setFocusTime(stats.focusTime || 0);
       }
     };
     updateStats();
@@ -62,7 +103,7 @@ function useStats() {
     return () => clearInterval(interval);
   }, []);
   
-  return { points, focusTime };
+  return { points };
 }
 
 export default function PomodoroTimer() {
@@ -79,16 +120,37 @@ export default function PomodoroTimer() {
   }, []);
 
   const { width: size } = dimensions;
-  const [mode, setMode] = useState<Mode>("work");
-  const [timeLeft, setTimeLeft] = useState(WORK_DURATION);
-  const [isRunning, setIsRunning] = useState(false);
-  const [sessionTime, setSessionTime] = useState(0);
   
-  const endTimeRef = useRef<number | null>(null);
+  // Load persisted timer state
+  const [timerState, setTimerState] = useState<TimerState>(DEFAULT_TIMER_STATE);
+  
+  useEffect(() => {
+    setTimerState(loadTimerState());
+  }, []);
+  
+  // Save timer state whenever it changes
+  useEffect(() => {
+    saveTimerState(timerState);
+  }, [timerState]);
+
+  const { mode, timeLeft, isRunning, sessionTime, endTime, sessionStart } = timerState;
+  
+  const setMode = (newMode: Mode) => setTimerState(prev => ({ ...prev, mode: newMode, timeLeft: newMode === "work" ? WORK_DURATION : BREAK_DURATION }));
+  const setTimeLeft = (time: number) => setTimerState(prev => ({ ...prev, timeLeft: time }));
+  const setIsRunning = (running: boolean) => setTimerState(prev => ({ ...prev, isRunning: running }));
+  const setSessionTime = (time: number) => setTimerState(prev => ({ ...prev, sessionTime: time }));
+  
+  const endTimeRef = useRef<number | null>(timerState.endTime);
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
   const noSleepVideoRef = useRef<HTMLVideoElement | null>(null);
-  const sessionStartRef = useRef<number>(0);
+  const sessionStartRef = useRef<number>(timerState.sessionStart);
   const { points } = useStats();
+
+  // Sync ref with state
+  useEffect(() => {
+    endTimeRef.current = timerState.endTime;
+    sessionStartRef.current = timerState.sessionStart;
+  }, [timerState.endTime, timerState.sessionStart]);
 
   const updateStats = (updates: any) => {
     try {
@@ -137,7 +199,10 @@ export default function PomodoroTimer() {
     if (isRunning) {
       acquireWakeLock();
       requestNotificationPermission();
-      sessionStartRef.current = Date.now();
+      if (!sessionStartRef.current) {
+        sessionStartRef.current = Date.now();
+        setTimerState(prev => ({ ...prev, sessionStart: Date.now() }));
+      }
     } else {
       releaseWakeLock();
     }
@@ -174,57 +239,83 @@ export default function PomodoroTimer() {
         points: currentStats.points + earnedPoints,
         streak: currentStats.streak + 1,
       });
-      setSessionTime(0);
+      setTimerState(prev => ({ ...prev, sessionTime: 0, sessionStart: 0 }));
     }
   }, [mode, sessionTime]);
 
   const toggleTimer = () => {
     if (!isRunning) {
-      endTimeRef.current = Date.now() + timeLeft * 1000;
-      setIsRunning(true);
+      const newEndTime = Date.now() + timeLeft * 1000;
+      setTimerState(prev => ({ 
+        ...prev, 
+        isRunning: true, 
+        endTime: newEndTime,
+        sessionStart: Date.now()
+      }));
     } else {
+      // Save session time when pausing
       if (sessionStartRef.current > 0) {
-        setSessionTime(prev => prev + (Date.now() - sessionStartRef.current) / 1000);
+        const elapsed = (Date.now() - sessionStartRef.current) / 1000;
+        setTimerState(prev => ({ 
+          ...prev, 
+          isRunning: false, 
+          sessionTime: prev.sessionTime + elapsed,
+          endTime: null,
+          sessionStart: 0
+        }));
+      } else {
+        setTimerState(prev => ({ ...prev, isRunning: false, endTime: null }));
       }
-      setIsRunning(false);
-      endTimeRef.current = null;
     }
   };
 
   const resetTimer = () => {
+    // Save session time before reset
+    let newSessionTime = sessionTime;
     if (isRunning && sessionStartRef.current > 0) {
-      setSessionTime(prev => prev + (Date.now() - sessionStartRef.current) / 1000);
+      newSessionTime += (Date.now() - sessionStartRef.current) / 1000;
     }
-    setIsRunning(false);
-    endTimeRef.current = null;
+    
+    setTimerState({
+      ...DEFAULT_TIMER_STATE,
+      sessionTime: newSessionTime,
+    });
     sessionStartRef.current = 0;
-    setSessionTime(0);
-    setMode("work");
-    setTimeLeft(WORK_DURATION);
   };
 
   useEffect(() => {
     if (!isRunning) return;
+    
     const interval = setInterval(() => {
       if (!endTimeRef.current) return;
       const remaining = Math.max(0, Math.round((endTimeRef.current - Date.now()) / 1000));
       
+      // Update session time while running
       if (mode === "work" && sessionStartRef.current > 0) {
-        setSessionTime(prev => prev + 0.2);
+        setTimerState(prev => ({ 
+          ...prev, 
+          sessionTime: prev.sessionTime + 0.2 
+        }));
       }
       
       if (remaining === 0) {
         handleTimerComplete();
-        setMode(prev => {
-          const next = prev === "work" ? "break" : "work";
-          setTimeLeft(next === "work" ? WORK_DURATION : BREAK_DURATION);
-          endTimeRef.current = Date.now() + (next === "work" ? WORK_DURATION : BREAK_DURATION) * 1000;
-          return next;
+        setTimerState(prev => {
+          const nextMode = prev.mode === "work" ? "break" : "work";
+          return {
+            ...prev,
+            mode: nextMode,
+            timeLeft: nextMode === "work" ? WORK_DURATION : BREAK_DURATION,
+            endTime: Date.now() + (nextMode === "work" ? WORK_DURATION : BREAK_DURATION) * 1000,
+            sessionTime: 0,
+            sessionStart: Date.now(),
+          };
         });
       } else {
-        setTimeLeft(remaining);
+        setTimerState(prev => ({ ...prev, timeLeft: remaining }));
       }
     }, 200);
+    
     return () => clearInterval(interval);
   }, [isRunning, handleTimerComplete, mode]);
 
@@ -241,13 +332,13 @@ export default function PomodoroTimer() {
     <div className="timer-wrapper">
       <div className="mode-switch">
         <button
-          onClick={() => { setMode("work"); setTimeLeft(WORK_DURATION); }}
+          onClick={() => setMode("work")}
           className={`mode-btn ${mode === "work" ? "active" : ""}`}
         >
           Çalışma
         </button>
         <button
-          onClick={() => { setMode("break"); setTimeLeft(BREAK_DURATION); }}
+          onClick={() => setMode("break")}
           className={`mode-btn ${mode === "break" ? "active" : ""}`}
         >
           Mola
@@ -256,7 +347,6 @@ export default function PomodoroTimer() {
 
       <div className="timer-ring">
         <svg width={size} height={size}>
-          {/* Background ring */}
           <circle
             cx={size/2}
             cy={size/2}
@@ -265,7 +355,6 @@ export default function PomodoroTimer() {
             stroke="rgba(255,255,255,0.05)"
             strokeWidth={stroke}
           />
-          {/* Progress ring with breathe animation */}
           <circle
             className={isRunning ? "progress-ring animate" : "progress-ring"}
             cx={size/2}
