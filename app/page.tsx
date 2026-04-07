@@ -34,64 +34,52 @@ export default function Home() {
 
   useEffect(() => {
     const savedPage = localStorage.getItem("yaverfx-page") as Page;
-    if (savedPage && TABS.some(t => t.id === savedPage)) setPage(savedPage);
+    if (savedPage && TABS.find(t => t.id === savedPage)) setPage(savedPage);
     if (localStorage.getItem("yaverfx-focus-mode") === "true") setFocus(true);
   }, []);
 
   useEffect(() => {
     const stored = localStorage.getItem("yaverfx-stats");
     if (stored) setStats({ ...DEFAULT_STATS, ...JSON.parse(stored) });
-    const listener = () => {
+    const handler = () => {
       const s = localStorage.getItem("yaverfx-stats");
       if (s) setStats({ ...DEFAULT_STATS, ...JSON.parse(s) });
     };
-    window.addEventListener("yaverfx-stats-update", listener);
-    return () => window.removeEventListener("yaverfx-stats-update", listener);
+    window.addEventListener("yaverfx-stats-update", handler);
+    return () => window.removeEventListener("yaverfx-stats-update", handler);
   }, []);
 
-  const changePage = (p: Page) => {
-    setPage(p);
-    localStorage.setItem("yaverfx-page", p);
-  };
-
-  const toggleFocus = () => {
-    const next = !focus;
-    setFocus(next);
-    localStorage.setItem("yaverfx-focus-mode", String(next));
-  };
-
-  const render = () => {
-    switch (page) {
-      case "timer": return <PomodoroTimer />;
-      case "tasks": return <TaskList />;
-      case "sounds": return <AmbientSounds />;
-      case "blocker": return <SiteBlocker />;
-      case "rewards": return <RewardSystem />;
-    }
-  };
+  const go = (p: Page) => { setPage(p); localStorage.setItem("yaverfx-page", p); };
+  const toggleFocus = () => { const n = !focus; setFocus(n); localStorage.setItem("yaverfx-focus-mode", String(n)); };
 
   return (
     <div className={`app ${focus ? "focus" : ""}`}>
-      {focus && <div className="focus-bar"><span>🎯 Focus</span><button onClick={toggleFocus}>✕</button></div>}
+      {focus && <div className="focus-bar"><span>🎯 Focus Modu</span><button onClick={toggleFocus}>✕</button></div>}
       
       <header className="header">
-        <div className="header-left">
+        <div className="header-content">
           <span className="page-icon">{TABS.find(t => t.id === page)?.icon}</span>
           <h1>{TABS.find(t => t.id === page)?.label}</h1>
         </div>
-        <div className="header-right">
-          <button className={`focus-toggle ${focus ? "on" : ""}`} onClick={toggleFocus}>🎯</button>
+        <div className="header-actions">
+          <button className={`focus-btn ${focus ? "active" : ""}`} onClick={toggleFocus}>🎯</button>
           <ThemeSelector />
         </div>
       </header>
 
-      <main className="main">{render()}</main>
+      <main className="main">
+        {page === "timer" && <PomodoroTimer />}
+        {page === "tasks" && <TaskList />}
+        {page === "sounds" && <AmbientSounds />}
+        {page === "blocker" && <SiteBlocker />}
+        {page === "rewards" && <RewardSystem />}
+      </main>
 
       <nav className="tabbar">
-        {TABS.map(tab => (
-          <button key={tab.id} className={`tab ${page === tab.id ? "active" : ""}`} onClick={() => changePage(tab.id as Page)}>
-            <span className="tab-icon">{tab.icon}</span>
-            <span className="tab-label">{tab.label}</span>
+        {TABS.map(t => (
+          <button key={t.id} className={`tab ${page === t.id ? "active" : ""}`} onClick={() => go(t.id as Page)}>
+            <span className="tab-icon">{t.icon}</span>
+            <span className="tab-label">{t.label}</span>
           </button>
         ))}
       </nav>
