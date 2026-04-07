@@ -1,17 +1,12 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-  
-  /* Theme variables - defaults (modern) */
   --theme-bg: #09090b;
   --theme-text: #fafafa;
   --theme-accent: #f43f5e;
   --theme-secondary: #27272a;
 }
 
-/* Theme: Modern */
 [data-theme="modern"] {
   --theme-bg: #09090b;
   --theme-text: #fafafa;
@@ -19,7 +14,6 @@
   --theme-secondary: #27272a;
 }
 
-/* Theme: Cyber */
 [data-theme="cyber"] {
   --theme-bg: #0a0a1a;
   --theme-text: #e0f7fa;
@@ -27,7 +21,6 @@
   --theme-secondary: #1a0a2e;
 }
 
-/* Theme: Hacker */
 [data-theme="hacker"] {
   --theme-bg: #000000;
   --theme-text: #00ff00;
@@ -35,7 +28,6 @@
   --theme-secondary: #0d1a0d;
 }
 
-/* Theme: Game */
 [data-theme="game"] {
   --theme-bg: #1a1a2e;
   --theme-text: #ffffff;
@@ -43,7 +35,6 @@
   --theme-secondary: #16213e;
 }
 
-/* Theme: Minimal */
 [data-theme="minimal"] {
   --theme-bg: #ffffff;
   --theme-text: #1a1a1a;
@@ -51,167 +42,35 @@
   --theme-secondary: #f3f4f6;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-
-  --animate-breathe: breathe 4s ease-in-out infinite;
-  --animate-pulse-ring: pulseRing 3s ease-in-out infinite;
-  --animate-glow-pulse: glowPulse 2.5s ease-in-out infinite;
-  --animate-shimmer: shimmer 3s linear infinite;
-  --animate-slide-up: slideUp 0.3s ease-out;
-  --animate-slide-down: slideDown 0.2s ease-out;
-  --animate-fade-in: fadeIn 0.2s ease-out;
-  --animate-fade-out: fadeOut 0.2s ease-out;
-  --animate-content-appear: contentAppear 0.3s ease-out;
-
-  @keyframes breathe {
-    0%, 100% {
-      transform: scale(0.85);
-      opacity: 0.15;
-    }
-    50% {
-      transform: scale(1);
-      opacity: 0.35;
-    }
-  }
-
-  @keyframes pulseRing {
-    0%, 100% {
-      transform: scale(0.92);
-      opacity: 0.4;
-    }
-    50% {
-      transform: scale(1.08);
-      opacity: 0.7;
-    }
-  }
-
-  @keyframes glowPulse {
-    0%, 100% {
-      filter: drop-shadow(0 0 8px currentColor) drop-shadow(0 0 16px currentColor);
-      opacity: 0.6;
-    }
-    50% {
-      filter: drop-shadow(0 0 16px currentColor) drop-shadow(0 0 32px currentColor) drop-shadow(0 0 48px currentColor);
-      opacity: 1;
-    }
-  }
-
-  @keyframes shimmer {
-    0% {
-      stroke-dashoffset: 0;
-    }
-    100% {
-      stroke-dashoffset: -200;
-    }
-  }
-
-  @keyframes slideUp {
-    from {
-      transform: translateY(100%);
-      opacity: 0;
-    }
-    to {
-      transform: translateY(0);
-      opacity: 1;
-    }
-  }
-
-  @keyframes slideDown {
-    from {
-      transform: translateY(0);
-      opacity: 1;
-    }
-    to {
-      transform: translateY(100%);
-      opacity: 0;
-    }
-  }
-
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
-  }
-
-  @keyframes fadeOut {
-    from {
-      opacity: 1;
-    }
-    to {
-      opacity: 0;
-    }
-  }
-
-  @keyframes contentAppear {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #09090b; /* zinc-950 equivalent for true dark */
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-  overscroll-behavior-y: none; /* Prevents pull-to-refresh on mobile browsers */
-}
-
-/* Hide scrollbar for Chrome, Safari and Opera */
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-
-/* Hide scrollbar for IE, Edge and Firefox */
-.no-scrollbar {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
-}
-
-/* Safari and mobile touch optimizations */
-body {
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: none;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-}
-
-/* Safe area padding for iPhone notch */
-.pb-safe {
-  padding-bottom: env(safe-area-inset-bottom, 16px);
-}
-
-/* Prevent scroll bounce on iOS */
 html, body {
-  position: fixed;
-  width: 100%;
   height: 100%;
+  width: 100%;
   overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
-/* Modal scroll handling */
-.modal-scroll {
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
+body {
+  background: var(--theme-bg);
+  color: var(--theme-text);
+  font-family: system-ui, -apple-system, sans-serif;
+  touch-action: manipulation;
 }
 
-.modal-scroll::-webkit-scrollbar {
-  display: none;
+@layer utilities {
+  .scroll-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scroll-none::-webkit-scrollbar {
+    display: none;
+  }
 }
