@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import PomodoroTimer from "./components/PomodoroTimer";
 import TaskList from "./components/TaskList";
 import AmbientSounds from "./components/AmbientSounds";
@@ -9,15 +9,20 @@ import RewardSystem from "./components/RewardSystem";
 
 type Page = "timer" | "tasks" | "sounds" | "blocker" | "rewards";
 
-// Stats - these would connect to actual data
-const STATS = {
-  focusTime: 127,
-  tasksDone: 23,
-  streak: 5,
-  points: 450,
+interface Stats {
+  focusTime: number;
+  tasksDone: number;
+  streak: number;
+  points: number;
+}
+
+const DEFAULT_STATS: Stats = {
+  focusTime: 0,
+  tasksDone: 0,
+  streak: 0,
+  points: 0,
 };
 
-// Trending
 const TRENDING_ITEMS = [
   { id: "pomodoro", label: "Pomodoro Maratonu", onClick: () => {} },
   { id: "nature", label: "Orman Sesleri", onClick: () => {} },
@@ -67,18 +72,37 @@ const NAV_ITEMS = [
   { id: "rewards", label: "Ödüller", icon: <RewardsIcon /> },
 ];
 
+// Global state for real-time updates
+let statsListeners: ((stats: Stats) => void)[] = [];
+
+export function updateStats(updates: Partial<Stats>) {
+  const stored = localStorage.getItem("yaverfx-stats");
+  const current = stored ? { ...DEFAULT_STATS, ...JSON.parse(stored) } : { ...DEFAULT_STATS };
+  const updated = { ...current, ...updates };
+  localStorage.setItem("yaverfx-stats", JSON.stringify(updated));
+  statsListeners.forEach(fn => fn(updated));
+}
+
+export function subscribeToStats(callback: (stats: Stats) => void) {
+  statsListeners.push(callback);
+  return () => {
+    statsListeners = statsListeners.filter(fn => fn !== callback);
+  };
+}
+
+export function getStats(): Stats {
+  const stored = localStorage.getItem("yaverfx-stats");
+  return stored ? { ...DEFAULT_STATS, ...JSON.parse(stored) } : { ...DEFAULT_STATS };
+}
+
 export default function Home() {
   const [currentPage, setCurrentPage] = useState<Page>("timer");
-  const [stats, setStats] = useState(STATS);
+  const [stats, setStats] = useState<Stats>(DEFAULT_STATS);
 
-  // Load saved stats
   useEffect(() => {
-    const stored = localStorage.getItem("yaverfx-stats");
-    if (stored) {
-      try {
-        setStats({ ...STATS, ...JSON.parse(stored) });
-      } catch {}
-    }
+    setStats(getStats());
+    const unsubscribe = subscribeToStats(setStats);
+    return unsubscribe;
   }, []);
 
   const renderPage = () => {
@@ -94,10 +118,9 @@ export default function Home() {
 
   return (
     <div className="app-container">
-      {/* Stats Bar */}
       <div className="stats-bar">
         <div className="stat-item">
-          <div className="stat-value">{stats.focusTime}</div>
+          <div className="stat-value">{Math.floor(stats.focusTime)}</div>
           <div className="stat-label">dk odak</div>
         </div>
         <div className="stat-item">
@@ -114,12 +137,10 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Header */}
       <header className="app-header">
         <h1>YaverFX</h1>
       </header>
 
-      {/* Trending */}
       <div className="trending-bar">
         <span className="trending-label">🔥 Trend</span>
         {TRENDING_ITEMS.map((item, i) => (
@@ -130,12 +151,10 @@ export default function Home() {
         ))}
       </div>
 
-      {/* Main Content */}
       <main className="app-main">
         {renderPage()}
       </main>
 
-      {/* Navigation */}
       <nav className="app-nav">
         {NAV_ITEMS.map((item) => (
           <button

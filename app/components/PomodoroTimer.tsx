@@ -44,12 +44,32 @@ function sendBrowserNotification(mode: Mode) {
   }
 }
 
+// Get updateStats from parent (injected via window)
+function useStats() {
+  const [points, setPoints] = useState(0);
+  
+  useEffect(() => {
+    const updatePoints = () => {
+      const stored = localStorage.getItem("yaverfx-stats");
+      if (stored) {
+        const stats = JSON.parse(stored);
+        setPoints(stats.points || 0);
+      }
+    };
+    updatePoints();
+    const interval = setInterval(updatePoints, 1000);
+    return () => clearInterval(interval);
+  }, []);
+  
+  return points;
+}
+
 export default function PomodoroTimer() {
-  const [dimensions, setDimensions] = useState({ width: 280, height: 280 });
+  const [dimensions, setDimensions] = useState({ width: 240, height: 240 });
 
   useEffect(() => {
     const update = () => {
-      const w = Math.min(window.innerWidth * 0.75, 280);
+      const w = Math.min(window.innerWidth * 0.65, 240);
       setDimensions({ width: w, height: w });
     };
     update();
@@ -61,18 +81,29 @@ export default function PomodoroTimer() {
   const [mode, setMode] = useState<Mode>("work");
   const [timeLeft, setTimeLeft] = useState(WORK_DURATION);
   const [isRunning, setIsRunning] = useState(false);
+  const [sessionTime, setSessionTime] = useState(0); // Track this session's focus time
   
   const endTimeRef = useRef<number | null>(null);
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
   const noSleepVideoRef = useRef<HTMLVideoElement | null>(null);
+  const sessionStartRef = useRef<number>(0);
+  const points = useStats();
 
-  // iOS Safari: WakeLock yok → no-sleep video fallback
+  const updateStats = (updates: any) => {
+    try {
+      const stored = localStorage.getItem("yaverfx-stats");
+      const current = stored ? JSON.parse(stored) : { focusTime: 0, tasksDone: 0, streak: 0, points: 0 };
+      const updated = { ...current, ...updates };
+      localStorage.setItem("yaverfx-stats", JSON.stringify(updated));
+      window.dispatchEvent(new CustomEvent('yaverfx-stats-update'));
+    } catch (e) {}
+  };
+
   const acquireWakeLock = useCallback(async () => {
     if ("wakeLock" in navigator && !wakeLockRef.current) {
       try {
         wakeLockRef.current = await navigator.wakeLock.request("screen");
       } catch (e) {
-        // iOS Safari fallback: 1x1 şeffaf video loop ile ekranı açık tut
         if (!noSleepVideoRef.current) {
           const video = document.createElement("video");
           video.setAttribute("playsinline", "");
@@ -94,7 +125,6 @@ export default function PomodoroTimer() {
       wakeLockRef.current.release().catch(() => {});
       wakeLockRef.current = null;
     }
-    // Fallback video'yu temizle
     if (noSleepVideoRef.current) {
       noSleepVideoRef.current.pause();
       noSleepVideoRef.current.remove();
@@ -106,6 +136,7 @@ export default function PomodoroTimer() {
     if (isRunning) {
       acquireWakeLock();
       requestNotificationPermission();
+      sessionStartRef.current = Date.now();
     } else {
       releaseWakeLock();
     }
@@ -118,7 +149,6 @@ export default function PomodoroTimer() {
         acquireWakeLock();
       }
     };
-    // iOS Safari: visibilitychange + pagehide/pagebfcache için de dinle
     const handlePageHide = () => { releaseWakeLock(); };
     document.addEventListener("visibilitychange", handleVis);
     window.addEventListener("pagehide", handlePageHide);
@@ -132,24 +162,45 @@ export default function PomodoroTimer() {
   const handleTimerComplete = useCallback(() => {
     playNotificationSound();
     sendBrowserNotification(mode);
-    if (mode === "work" && typeof window !== "undefined" && (window as any).addYaverFxPoints) {
-      (window as any).addYaverFxPoints();
+    
+    if (mode === "work") {
+      // Award points and update stats
+      const sessionMinutes = Math.round(sessionTime / 60);
+      const earnedPoints = 10 + (sessionMinutes >= 25 ? 5 : 0); // Base 10 + bonus for full session
+      const currentStats = JSON.parse(localStorage.getItem("yaverfx-stats") || '{"focusTime":0,"tasksDone":0,"streak":0,"points":0}');
+      
+      updateStats({
+        focusTime: currentStats.focusTime + sessionMinutes,
+        points: currentStats.points + earnedPoints,
+        streak: currentStats.streak + 1,
+      });
+      setSessionTime(0);
     }
-  }, [mode]);
+  }, [mode, sessionTime]);
 
   const toggleTimer = () => {
     if (!isRunning) {
       endTimeRef.current = Date.now() + timeLeft * 1000;
       setIsRunning(true);
     } else {
+      // Track partial session time when pausing
+      if (sessionStartRef.current > 0) {
+        setSessionTime(prev => prev + (Date.now() - sessionStartRef.current) / 1000);
+      }
       setIsRunning(false);
       endTimeRef.current = null;
     }
   };
 
   const resetTimer = () => {
+    // Save partial session time before reset
+    if (isRunning && sessionStartRef.current > 0) {
+      setSessionTime(prev => prev + (Date.now() - sessionStartRef.current) / 1000);
+    }
     setIsRunning(false);
     endTimeRef.current = null;
+    sessionStartRef.current = 0;
+    setSessionTime(0);
     setMode("work");
     setTimeLeft(WORK_DURATION);
   };
@@ -159,6 +210,13 @@ export default function PomodoroTimer() {
     const interval = setInterval(() => {
       if (!endTimeRef.current) return;
       const remaining = Math.max(0, Math.round((endTimeRef.current - Date.now()) / 1000));
+      
+      // Update real-time focus time
+      if (mode === "work" && sessionStartRef.current > 0) {
+        const elapsed = (Date.now() - sessionStartRef.current) / 1000;
+        setSessionTime(prev => prev + 0.2);
+      }
+      
       if (remaining === 0) {
         handleTimerComplete();
         setMode(prev => {
@@ -172,49 +230,39 @@ export default function PomodoroTimer() {
       }
     }, 200);
     return () => clearInterval(interval);
-  }, [isRunning, handleTimerComplete]);
+  }, [isRunning, handleTimerComplete, mode]);
 
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;
   const display = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
   
-  const stroke = Math.max(size / 30, 8);
+  const stroke = Math.max(size / 25, 10);
   const radius = (size / 2) - stroke;
   const circumference = 2 * Math.PI * radius;
   const progress = (mode === "work" ? WORK_DURATION : BREAK_DURATION - timeLeft) / (mode === "work" ? WORK_DURATION : BREAK_DURATION);
 
-  const accent = "var(--theme-accent)";
   const text = "var(--theme-text)";
+  const accent = "var(--theme-accent)";
 
   return (
-    <div className="flex flex-col items-center gap-6 w-full px-4">
-      {/* Mode Switcher */}
-      <div className="flex rounded-full p-1" style={{ backgroundColor: "var(--theme-secondary)" }}>
+    <div className="timer-wrapper">
+      <div className="mode-switch">
         <button
           onClick={() => { setMode("work"); setTimeLeft(WORK_DURATION); }}
-          className="px-6 py-2 rounded-full text-sm font-medium transition-colors min-h-44"
-          style={{
-            backgroundColor: mode === "work" ? accent : "transparent",
-            color: mode === "work" ? "#fff" : text,
-          }}
+          className={`mode-btn ${mode === "work" ? "active" : ""}`}
         >
           Çalışma
         </button>
         <button
           onClick={() => { setMode("break"); setTimeLeft(BREAK_DURATION); }}
-          className="px-6 py-2 rounded-full text-sm font-medium transition-colors min-h-44"
-          style={{
-            backgroundColor: mode === "break" ? accent : "transparent",
-            color: mode === "break" ? "#fff" : text,
-          }}
+          className={`mode-btn ${mode === "break" ? "active" : ""}`}
         >
           Mola
         </button>
       </div>
 
-      {/* Timer Ring */}
-      <div className="relative" style={{ width: size, height: size }}>
-        <svg width={size} height={size} className="absolute inset-0 -rotate-90">
+      <div className="timer-ring">
+        <svg width={size} height={size}>
           <circle
             cx={size/2}
             cy={size/2}
@@ -222,7 +270,7 @@ export default function PomodoroTimer() {
             fill="none"
             stroke={text}
             strokeWidth={stroke}
-            style={{ opacity: 0.12 }}
+            style={{ opacity: 0.1 }}
           />
           <circle
             cx={size/2}
@@ -234,43 +282,39 @@ export default function PomodoroTimer() {
             strokeLinecap="round"
             strokeDasharray={circumference}
             strokeDashoffset={circumference * (1 - progress)}
-            style={{ transition: "stroke-dashoffset 0.5s ease-out" }}
+            style={{ transition: "stroke-dashoffset 0.3s ease-out" }}
           />
         </svg>
         
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-5xl font-bold" style={{ color: text }}>{display}</span>
-          <span className="text-sm mt-2" style={{ color: accent }}>
+        <div className="timer-display">
+          <span className="timer-time">{display}</span>
+          <span className="timer-status">
             {isRunning ? (mode === "work" ? "odaklan" : "dinlen") : "hazır"}
           </span>
+          {mode === "work" && isRunning && (
+            <span className="timer-session">+{Math.floor(sessionTime / 60)} dk</span>
+          )}
         </div>
       </div>
 
-      {/* Controls */}
-      <div className="flex gap-4">
+      <div className="controls">
         <button
           onClick={toggleTimer}
-          className="px-12 py-4 rounded-full font-semibold transition-transform active:scale-95 min-h-44"
-          style={{ 
-            backgroundColor: accent, 
-            color: "#fff",
-            minWidth: 140,
-          }}
+          className="control-btn primary"
         >
-          {isRunning ? "Duraklat" : "Başlat"}
+          {isRunning ? "⏸️ Duraklat" : "▶️ Başlat"}
         </button>
         <button
           onClick={resetTimer}
-          className="px-8 py-4 rounded-full font-medium transition-transform active:scale-95 min-h-44"
-          style={{ 
-            border: `1px solid ${text}`, 
-            color: text,
-            opacity: 0.4,
-            minWidth: 100,
-          }}
+          className="control-btn secondary"
         >
-          Sıfırla
+          🔄 Sıfırla
         </button>
+      </div>
+
+      <div className="points-display">
+        <span className="points-label">Toplam Puan</span>
+        <span className="points-value">{points}</span>
       </div>
     </div>
   );
