@@ -95,7 +95,14 @@ export default function PomodoroTimer() {
       </div>
 
       <div className="relative flex items-center justify-center">
-        <svg width="200" height="200" className="-rotate-90 sm:w-[240px] sm:h-[240px] md:w-[280px] md:h-[280px]">
+        {/* Breathing Pastel Glow */}
+        <div
+          className={`absolute inset-0 rounded-full blur-2xl transition-colors duration-1000 ${
+            isRunning ? "animate-breathe" : "opacity-10"
+          } ${mode === "work" ? "bg-rose-500" : "bg-emerald-500"}`}
+        />
+
+        <svg width="200" height="200" className="relative z-10 -rotate-90 sm:w-[240px] sm:h-[240px] md:w-[280px] md:h-[280px]">
           <circle
             cx="140"
             cy="140"
