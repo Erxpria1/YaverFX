@@ -12,6 +12,10 @@
   --font-mono: var(--font-geist-mono);
 
   --animate-breathe: breathe 4s ease-in-out infinite;
+  --animate-pulse-ring: pulseRing 3s ease-in-out infinite;
+  --animate-glow-pulse: glowPulse 2.5s ease-in-out infinite;
+  --animate-shimmer: shimmer 3s linear infinite;
+
   @keyframes breathe {
     0%, 100% {
       transform: scale(0.85);
@@ -20,6 +24,37 @@
     50% {
       transform: scale(1);
       opacity: 0.35;
+    }
+  }
+
+  @keyframes pulseRing {
+    0%, 100% {
+      transform: scale(0.92);
+      opacity: 0.4;
+    }
+    50% {
+      transform: scale(1.08);
+      opacity: 0.7;
+    }
+  }
+
+  @keyframes glowPulse {
+    0%, 100% {
+      filter: drop-shadow(0 0 8px currentColor) drop-shadow(0 0 16px currentColor);
+      opacity: 0.6;
+    }
+    50% {
+      filter: drop-shadow(0 0 16px currentColor) drop-shadow(0 0 32px currentColor) drop-shadow(0 0 48px currentColor);
+      opacity: 1;
+    }
+  }
+
+  @keyframes shimmer {
+    0% {
+      stroke-dashoffset: 0;
+    }
+    100% {
+      stroke-dashoffset: -200;
     }
   }
 }

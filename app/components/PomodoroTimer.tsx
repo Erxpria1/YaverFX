@@ -12,16 +12,13 @@ export default function PomodoroTimer() {
   const [timeLeft, setTimeLeft] = useState(WORK_DURATION);
   const [isRunning, setIsRunning] = useState(false);
   
-  // Track exact timestamp to prevent background tab throttling (timer drift)
   const endTimeRef = useRef<number | null>(null);
 
   const toggleTimer = () => {
     if (!isRunning) {
-      // Starting or resuming: set the target end time
       endTimeRef.current = Date.now() + timeLeft * 1000;
       setIsRunning(true);
     } else {
-      // Pausing: stop and save the current remaining time
       setIsRunning(false);
       endTimeRef.current = null;
     }
@@ -37,7 +34,6 @@ export default function PomodoroTimer() {
   useEffect(() => {
     if (!isRunning) return;
 
-    // Check frequently but rely on absolute Date diffs for accuracy
     const interval = setInterval(() => {
       if (!endTimeRef.current) return;
       
@@ -45,7 +41,6 @@ export default function PomodoroTimer() {
       const remaining = Math.max(0, Math.round((endTimeRef.current - now) / 1000));
 
       if (remaining === 0) {
-        // Time's up, switch modes seamlessly
         setMode((prevMode) => {
           const nextMode = prevMode === "work" ? "break" : "work";
           const nextDuration = nextMode === "work" ? WORK_DURATION : BREAK_DURATION;
@@ -68,26 +63,29 @@ export default function PomodoroTimer() {
   
   const totalDuration = mode === "work" ? WORK_DURATION : BREAK_DURATION;
   const progress = (totalDuration - timeLeft) / totalDuration;
-  const circumference = 2 * Math.PI * 120;
+  
+  const radius = 120;
+  const strokeWidth = 6;
+  const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference * (1 - progress);
 
   return (
-    <div className="flex flex-col items-center gap-4 sm:gap-6 md:gap-8">
-      <div className="flex gap-2">
+    <div className="flex flex-col items-center gap-6 sm:gap-8 md:gap-10">
+      <div className="flex gap-3">
         <span
-          className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+          className={`rounded-full px-5 py-2 text-sm font-medium transition-all duration-700 ${
             mode === "work"
-              ? "bg-rose-500/20 text-rose-400"
-              : "text-zinc-500"
+              ? "bg-rose-500/20 text-rose-400 shadow-lg shadow-rose-500/20"
+              : "text-zinc-600"
           }`}
         >
           Çalışma
         </span>
         <span
-          className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+          className={`rounded-full px-5 py-2 text-sm font-medium transition-all duration-700 ${
             mode === "break"
-              ? "bg-emerald-500/20 text-emerald-400"
-              : "text-zinc-500"
+              ? "bg-emerald-500/20 text-emerald-400 shadow-lg shadow-emerald-500/20"
+              : "text-zinc-600"
           }`}
         >
           Mola
@@ -95,58 +93,150 @@ export default function PomodoroTimer() {
       </div>
 
       <div className="relative flex items-center justify-center">
-        {/* Breathing Pastel Glow */}
+        {/* Outer breathing glow ring */}
         <div
-          className={`absolute inset-0 rounded-full blur-2xl transition-colors duration-1000 ${
-            isRunning ? "animate-breathe" : "opacity-10"
-          } ${mode === "work" ? "bg-rose-500" : "bg-emerald-500"}`}
+          className={`absolute rounded-full transition-all duration-1000 ${
+            isRunning ? "animate-pulse-ring" : "opacity-0 scale-75"
+          }`}
+          style={{
+            width: "180px",
+            height: "180px",
+            background: mode === "work" 
+              ? "radial-gradient(circle, rgba(244,63,94,0.4) 0%, rgba(244,63,94,0) 70%)"
+              : "radial-gradient(circle, rgba(16,185,129,0.4) 0%, rgba(16,185,129,0) 70%)",
+          }}
         />
 
-        <svg width="200" height="200" className="relative z-10 -rotate-90 sm:w-[240px] sm:h-[240px] md:w-[280px] md:h-[280px]">
+        {/* Secondary glow layer */}
+        <div
+          className={`absolute rounded-full blur-xl transition-all duration-1000 ${
+            isRunning ? "animate-glow-pulse opacity-60" : "opacity-0"
+          }`}
+          style={{
+            width: "160px",
+            height: "160px",
+            backgroundColor: mode === "work" ? "rgba(244,63,94,0.3)" : "rgba(16,185,129,0.3)",
+          }}
+        />
+
+        {/* SVG Ring */}
+        <svg 
+          width="180" 
+          height="180" 
+          className="relative z-10 -rotate-90 sm:w-[240px] sm:h-[240px] md:w-[280px] md:h-[280px]"
+        >
+          {/* Defs for gradients */}
+          <defs>
+            <linearGradient id="workGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#fb7185" />
+              <stop offset="50%" stopColor="#f43f5e" />
+              <stop offset="100%" stopColor="#e11d48" />
+            </linearGradient>
+            <linearGradient id="breakGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#6ee7b7" />
+              <stop offset="50%" stopColor="#10b981" />
+              <stop offset="100%" stopColor="#059669" />
+            </linearGradient>
+            <filter id="glow">
+              <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+              <feMerge>
+                <feMergeNode in="coloredBlur"/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
+          </defs>
+
+          {/* Background track */}
           <circle
             cx="140"
             cy="140"
-            r="120"
+            r={radius}
             fill="none"
             stroke="currentColor"
-            strokeWidth="4"
-            className="text-zinc-800"
+            strokeWidth={strokeWidth}
+            className="text-zinc-800/80"
           />
+
+          {/* Inner subtle track */}
           <circle
             cx="140"
             cy="140"
-            r="120"
+            r={radius - 12}
             fill="none"
             stroke="currentColor"
-            strokeWidth="4"
+            strokeWidth="1"
+            className="text-zinc-800/40"
+          />
+
+          {/* Progress ring with glow */}
+          <circle
+            cx="140"
+            cy="140"
+            r={radius}
+            fill="none"
+            stroke={mode === "work" ? "url(#workGradient)" : "url(#breakGradient)"}
+            strokeWidth={strokeWidth}
             strokeLinecap="round"
-            className={mode === "work" ? "text-rose-500" : "text-emerald-500"}
+            filter="url(#glow)"
             style={{
               strokeDasharray: circumference,
               strokeDashoffset,
-              transition: "stroke-dashoffset 0.2s linear",
+              transition: "stroke-dashoffset 0.3s ease-in-out, stroke 1s ease",
             }}
           />
+
+          {/* Shimmer overlay on progress */}
+          {isRunning && (
+            <circle
+              cx="140"
+              cy="140"
+              r={radius}
+              fill="none"
+              stroke="url(#workGradient)"
+              strokeWidth={strokeWidth + 2}
+              strokeLinecap="round"
+              opacity="0.3"
+              style={{
+                strokeDasharray: "8 12",
+                animation: "shimmer 3s linear infinite",
+                transition: "stroke 1s ease",
+              }}
+            />
+          )}
         </svg>
-        <span className="absolute text-4xl sm:text-5xl font-mono font-semibold tracking-wider text-zinc-100">
-          {display}
-        </span>
+
+        {/* Center content */}
+        <div className="absolute z-20 flex flex-col items-center">
+          <span 
+            className="text-4xl sm:text-5xl md:text-6xl font-mono font-semibold tracking-wider text-zinc-100 transition-all duration-700"
+            style={{
+              textShadow: isRunning ? `0 0 20px ${mode === "work" ? "rgba(244,63,94,0.5)" : "rgba(16,185,129,0.5)"}` : "none",
+            }}
+          >
+            {display}
+          </span>
+          <span className={`mt-1 text-xs font-medium uppercase tracking-widest transition-colors duration-700 ${
+            mode === "work" ? "text-rose-400/80" : "text-emerald-400/80"
+          }`}>
+            {mode === "work" ? "focus" : "relax"}
+          </span>
+        </div>
       </div>
 
-      <div className="flex gap-3">
+      <div className="flex gap-4">
         <button
           onClick={toggleTimer}
-          className={`rounded-full px-8 py-3 text-sm font-semibold transition-colors ${
+          className={`rounded-full px-10 py-3.5 text-sm font-semibold transition-all duration-300 ${
             isRunning
-              ? "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
-              : "bg-zinc-100 text-zinc-900 hover:bg-white"
+              ? "bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:shadow-lg"
+              : "bg-zinc-100 text-zinc-900 hover:bg-white hover:shadow-lg hover:shadow-zinc-100/20"
           }`}
         >
           {isRunning ? "Duraklat" : "Başlat"}
         </button>
         <button
           onClick={resetTimer}
-          className="rounded-full border border-zinc-700 px-8 py-3 text-sm font-semibold text-zinc-400 transition-colors hover:border-zinc-500 hover:text-zinc-200"
+          className="rounded-full border border-zinc-700 px-10 py-3.5 text-sm font-semibold text-zinc-400 transition-all duration-300 hover:border-zinc-500 hover:text-zinc-200 hover:shadow-lg"
         >
           Sıfırla
         </button>
