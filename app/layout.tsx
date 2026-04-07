@@ -17,11 +17,15 @@ export const metadata: Metadata = {
   description: "DHBB/ADD odak uygulaması - Pomodoro, görevler, ambient sesler",
   icons: {
     icon: "/yaverfx.ico",
+    apple: "/apple-icon.png",
   },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
     title: "YaverFX",
+  },
+  formatDetection: {
+    telephone: false,
   },
 };
 
