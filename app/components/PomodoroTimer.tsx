@@ -195,30 +195,11 @@ export default function PomodoroTimer() {
       </div>
 
       <div className="relative flex items-center justify-center">
-        {/* Outer breathing glow ring */}
+        {/* Breathing Pastel Glow - Single elegant layer */}
         <div
-          className={`absolute rounded-full transition-all duration-1000 ${
-            isRunning ? "animate-pulse-ring" : "opacity-0 scale-75"
-          }`}
-          style={{
-            width: "180px",
-            height: "180px",
-            background: mode === "work" 
-              ? "radial-gradient(circle, rgba(244,63,94,0.4) 0%, rgba(244,63,94,0) 70%)"
-              : "radial-gradient(circle, rgba(16,185,129,0.4) 0%, rgba(16,185,129,0) 70%)",
-          }}
-        />
-
-        {/* Secondary glow layer */}
-        <div
-          className={`absolute rounded-full blur-xl transition-all duration-1000 ${
-            isRunning ? "animate-glow-pulse opacity-60" : "opacity-0"
-          }`}
-          style={{
-            width: "160px",
-            height: "160px",
-            backgroundColor: mode === "work" ? "rgba(244,63,94,0.3)" : "rgba(16,185,129,0.3)",
-          }}
+          className={`absolute inset-0 rounded-full blur-2xl transition-colors duration-1000 ${
+            isRunning ? "animate-breathe" : "opacity-10 scale-90"
+          } ${mode === "work" ? "bg-rose-500/30" : "bg-emerald-500/30"}`}
         />
 
         {/* SVG Ring */}
@@ -239,13 +220,6 @@ export default function PomodoroTimer() {
               <stop offset="50%" stopColor="#10b981" />
               <stop offset="100%" stopColor="#059669" />
             </linearGradient>
-            <filter id="glow">
-              <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
-              <feMerge>
-                <feMergeNode in="coloredBlur"/>
-                <feMergeNode in="SourceGraphic"/>
-              </feMerge>
-            </filter>
           </defs>
 
           {/* Background track */}
@@ -270,7 +244,7 @@ export default function PomodoroTimer() {
             className="text-zinc-800/40"
           />
 
-          {/* Progress ring with glow */}
+          {/* Progress ring */}
           <circle
             cx="140"
             cy="140"
@@ -279,48 +253,25 @@ export default function PomodoroTimer() {
             stroke={mode === "work" ? "url(#workGradient)" : "url(#breakGradient)"}
             strokeWidth={strokeWidth}
             strokeLinecap="round"
-            filter="url(#glow)"
             style={{
               strokeDasharray: circumference,
               strokeDashoffset,
-              transition: "stroke-dashoffset 0.3s ease-in-out, stroke 1s ease",
+              transition: "stroke-dashoffset 0.2s linear, stroke 1s ease",
             }}
           />
-
-          {/* Shimmer overlay on progress */}
-          {isRunning && (
-            <circle
-              cx="140"
-              cy="140"
-              r={radius}
-              fill="none"
-              stroke="url(#workGradient)"
-              strokeWidth={strokeWidth + 2}
-              strokeLinecap="round"
-              opacity="0.3"
-              style={{
-                strokeDasharray: "8 12",
-                animation: "shimmer 3s linear infinite",
-                transition: "stroke 1s ease",
-              }}
-            />
-          )}
         </svg>
 
         {/* Center content */}
         <div className="absolute z-20 flex flex-col items-center">
           <span 
             className="text-4xl sm:text-5xl md:text-6xl font-mono font-semibold tracking-wider text-zinc-100 transition-all duration-700"
-            style={{
-              textShadow: isRunning ? `0 0 20px ${mode === "work" ? "rgba(244,63,94,0.5)" : "rgba(16,185,129,0.5)"}` : "none",
-            }}
           >
             {display}
           </span>
           <span className={`mt-1 text-xs font-medium uppercase tracking-widest transition-colors duration-700 ${
             mode === "work" ? "text-rose-400/80" : "text-emerald-400/80"
           }`}>
-            {mode === "work" ? "focus" : "relax"}
+            {mode === "work" ? "odak" : "mola"}
           </span>
         </div>
       </div>
