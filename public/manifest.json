@@ -10,20 +10,16 @@
   "scope": "/",
   "icons": [
     {
-      "src": "/favicon.ico",
-      "sizes": "48x48 64x64 128x128 256x256",
-      "type": "image/x-icon",
-      "purpose": "any"
-    },
-    {
       "src": "/apple-touch-icon.png",
       "sizes": "180x180",
       "type": "image/png",
       "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon",
+      "purpose": "any"
     }
-  ],
-  "categories": ["productivity", "utilities"],
-  "lang": "tr",
-  "dir": "ltr",
-  "prefer_related_applications": false
+  ]
 }
