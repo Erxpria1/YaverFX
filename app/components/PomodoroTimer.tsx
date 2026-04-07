@@ -166,8 +166,11 @@ export default function PomodoroTimer() {
   const totalDuration = mode === "work" ? WORK_DURATION : BREAK_DURATION;
   const progress = (totalDuration - timeLeft) / totalDuration;
   
-  const radius = 120;
-  const strokeWidth = 6;
+  // Responsive calculations
+  const svgSize = 180;
+  const radius = (svgSize / 2) - 15;
+  const center = svgSize / 2;
+  const strokeWidth = 8;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference * (1 - progress);
 
@@ -204,9 +207,10 @@ export default function PomodoroTimer() {
 
         {/* SVG Ring */}
         <svg 
-          width="180" 
-          height="180" 
-          className="relative z-10 -rotate-90 sm:w-[240px] sm:h-[240px] md:w-[280px] md:h-[280px]"
+          width={svgSize} 
+          height={svgSize} 
+          viewBox={`0 0 ${svgSize} ${svgSize}`}
+          className="relative z-10 -rotate-90"
         >
           {/* Defs for gradients */}
           <defs>
@@ -224,8 +228,8 @@ export default function PomodoroTimer() {
 
           {/* Background track */}
           <circle
-            cx="140"
-            cy="140"
+            cx={center}
+            cy={center}
             r={radius}
             fill="none"
             stroke="currentColor"
@@ -235,9 +239,9 @@ export default function PomodoroTimer() {
 
           {/* Inner subtle track */}
           <circle
-            cx="140"
-            cy="140"
-            r={radius - 12}
+            cx={center}
+            cy={center}
+            r={radius - 15}
             fill="none"
             stroke="currentColor"
             strokeWidth="1"
@@ -246,8 +250,8 @@ export default function PomodoroTimer() {
 
           {/* Progress ring */}
           <circle
-            cx="140"
-            cy="140"
+            cx={center}
+            cy={center}
             r={radius}
             fill="none"
             stroke={mode === "work" ? "url(#workGradient)" : "url(#breakGradient)"}
