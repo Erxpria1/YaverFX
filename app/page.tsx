@@ -6,7 +6,6 @@ import TaskList from "./components/TaskList";
 import AmbientSounds from "./components/AmbientSounds";
 import SiteBlocker from "./components/SiteBlocker";
 import RewardSystem from "./components/RewardSystem";
-import PWAInstallPrompt from "./components/PWAInstallPrompt";
 
 type Page = "timer" | "tasks" | "sounds" | "blocker" | "rewards";
 
@@ -184,8 +183,6 @@ export default function Home() {
           </button>
         ))}
       </nav>
-      
-      <PWAInstallPrompt />
     </div>
   );
 }
