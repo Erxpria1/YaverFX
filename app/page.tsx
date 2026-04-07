@@ -2,6 +2,7 @@ import PomodoroTimer from "./components/PomodoroTimer";
 import TaskList from "./components/TaskList";
 import AmbientSounds from "./components/AmbientSounds";
 import SiteBlocker from "./components/SiteBlocker";
+import RewardSystem from "./components/RewardSystem";
 
 export default function Home() {
   return (
@@ -12,6 +13,10 @@ export default function Home() {
         </h1>
         <PomodoroTimer />
         
+        <div className="w-full mt-10 sm:mt-12 pt-8 border-t border-zinc-800">
+          <RewardSystem />
+        </div>
+
         <div className="w-full mt-10 sm:mt-12 pt-8 border-t border-zinc-800">
           <h2 className="text-lg sm:text-xl font-semibold tracking-tight text-zinc-100 mb-4 sm:mb-6">
             Görevler

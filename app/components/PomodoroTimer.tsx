@@ -1,11 +1,57 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 
 const WORK_DURATION = 25 * 60;
 const BREAK_DURATION = 5 * 60;
 
 type Mode = "work" | "break";
+
+function playNotificationSound() {
+  try {
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    
+    const playNote = (frequency: number, startTime: number, duration: number) => {
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(frequency, startTime);
+      
+      gainNode.gain.setValueAtTime(0, startTime);
+      gainNode.gain.linearRampToValueAtTime(0.3, startTime + 0.05);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+      
+      oscillator.start(startTime);
+      oscillator.stop(startTime + duration);
+    };
+    
+    const now = audioContext.currentTime;
+    playNote(523.25, now, 0.3);
+    playNote(659.25, now + 0.15, 0.3);
+    playNote(783.99, now + 0.3, 0.4);
+    playNote(1046.5, now + 0.5, 0.6);
+  } catch (e) {
+    console.error("Failed to play notification sound:", e);
+  }
+}
+
+function requestNotificationPermission() {
+  if ("Notification" in window && Notification.permission === "default") {
+    Notification.requestPermission();
+  }
+}
+
+function sendBrowserNotification(mode: Mode) {
+  if ("Notification" in window && Notification.permission === "granted") {
+    const title = mode === "work" ? "Focus session complete!" : "Break is over!";
+    const body = mode === "work" ? "Time for a break. You earned it!" : "Ready to focus again?";
+    new Notification(title, { body, icon: "/favicon.ico" });
+  }
+}
 
 export default function PomodoroTimer() {
   const [mode, setMode] = useState<Mode>("work");
@@ -13,6 +59,61 @@ export default function PomodoroTimer() {
   const [isRunning, setIsRunning] = useState(false);
   
   const endTimeRef = useRef<number | null>(null);
+  const wakeLockRef = useRef<WakeLockSentinel | null>(null);
+
+  const acquireWakeLock = useCallback(async () => {
+    if ("wakeLock" in navigator) {
+      try {
+        wakeLockRef.current = await navigator.wakeLock.request("screen");
+      } catch (e) {
+        console.error("Failed to acquire wake lock:", e);
+      }
+    }
+  }, []);
+
+  const releaseWakeLock = useCallback(async () => {
+    if (wakeLockRef.current) {
+      try {
+        await wakeLockRef.current.release();
+        wakeLockRef.current = null;
+      } catch (e) {
+        console.error("Failed to release wake lock:", e);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isRunning) {
+      acquireWakeLock();
+      requestNotificationPermission();
+    } else {
+      releaseWakeLock();
+    }
+
+    return () => {
+      releaseWakeLock();
+    };
+  }, [isRunning, acquireWakeLock, releaseWakeLock]);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible" && isRunning && "wakeLock" in navigator) {
+        acquireWakeLock();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [isRunning, acquireWakeLock]);
+
+  const handleTimerComplete = useCallback(() => {
+    playNotificationSound();
+    sendBrowserNotification(mode);
+    // Add reward points if work session completed
+    if (mode === "work" && typeof window !== "undefined" && (window as any).addYaverFxPoints) {
+      (window as any).addYaverFxPoints();
+    }
+  }, [mode]);
 
   const toggleTimer = () => {
     if (!isRunning) {
@@ -41,6 +142,7 @@ export default function PomodoroTimer() {
       const remaining = Math.max(0, Math.round((endTimeRef.current - now) / 1000));
 
       if (remaining === 0) {
+        handleTimerComplete();
         setMode((prevMode) => {
           const nextMode = prevMode === "work" ? "break" : "work";
           const nextDuration = nextMode === "work" ? WORK_DURATION : BREAK_DURATION;
@@ -55,7 +157,7 @@ export default function PomodoroTimer() {
     }, 200);
 
     return () => clearInterval(interval);
-  }, [isRunning]);
+  }, [isRunning, handleTimerComplete]);
 
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;
