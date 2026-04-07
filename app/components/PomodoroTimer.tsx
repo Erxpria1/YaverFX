@@ -64,12 +64,28 @@ export default function PomodoroTimer() {
   
   const endTimeRef = useRef<number | null>(null);
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
+  const noSleepVideoRef = useRef<HTMLVideoElement | null>(null);
 
+  // iOS Safari: WakeLock yok → no-sleep video fallback
   const acquireWakeLock = useCallback(async () => {
     if ("wakeLock" in navigator && !wakeLockRef.current) {
       try {
         wakeLockRef.current = await navigator.wakeLock.request("screen");
-      } catch (e) {}
+      } catch (e) {
+        // iOS Safari fallback: 1x1 şeffaf video loop ile ekranı açık tut
+        if (!noSleepVideoRef.current) {
+          const video = document.createElement("video");
+          video.setAttribute("playsinline", "");
+          video.setAttribute("muted", "");
+          video.setAttribute("loop", "");
+          video.autoplay = true;
+          video.style.cssText = "position:fixed;left:-1px;top:-1px;width:1px;height:1px;opacity:0.01;pointer-events:none;z-index:-1";
+          video.src = "data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28ybXA0MQAAAAhm";
+          noSleepVideoRef.current = video;
+          document.body.appendChild(video);
+          await video.play().catch(() => {});
+        }
+      }
     }
   }, []);
 
@@ -77,6 +93,12 @@ export default function PomodoroTimer() {
     if (wakeLockRef.current) {
       wakeLockRef.current.release().catch(() => {});
       wakeLockRef.current = null;
+    }
+    // Fallback video'yu temizle
+    if (noSleepVideoRef.current) {
+      noSleepVideoRef.current.pause();
+      noSleepVideoRef.current.remove();
+      noSleepVideoRef.current = null;
     }
   }, []);
 
@@ -92,11 +114,17 @@ export default function PomodoroTimer() {
   useEffect(() => {
     if (!isRunning) return;
     const handleVis = () => {
-      if (document.visibilityState === "visible") acquireWakeLock();
+      if (document.visibilityState === "visible") {
+        acquireWakeLock();
+      }
     };
+    // iOS Safari: visibilitychange + pagehide/pagebfcache için de dinle
+    const handlePageHide = () => { releaseWakeLock(); };
     document.addEventListener("visibilitychange", handleVis);
+    window.addEventListener("pagehide", handlePageHide);
     return () => {
       document.removeEventListener("visibilitychange", handleVis);
+      window.removeEventListener("pagehide", handlePageHide);
       releaseWakeLock();
     };
   }, [isRunning, acquireWakeLock, releaseWakeLock]);

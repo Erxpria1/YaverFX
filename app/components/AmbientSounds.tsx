@@ -46,7 +46,7 @@ export default function AmbientSounds() {
 
   const getCtx = useCallback(() => {
     if (!ctxRef.current) {
-      ctxRef.current = new AudioContext();
+      ctxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
     }
     if (ctxRef.current.state === "suspended") {
       ctxRef.current.resume();
@@ -54,9 +54,15 @@ export default function AmbientSounds() {
     return ctxRef.current;
   }, []);
 
+  // iOS Safari: Her ses açma/kapama işleminde user gesture'dan sonra ctx'i resume et
   const toggleSound = useCallback((type: SoundType) => {
     const state = sounds[type];
     const ctx = getCtx();
+    
+    // iOS Safari: suspended → resume (user gesture ile tetiklenir)
+    if (ctx.state === "suspended") {
+      ctx.resume().catch(() => {});
+    }
     
     if (state.playing && refs.current[type]) {
       refs.current[type]!.source.stop();

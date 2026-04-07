@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 
 interface Task {
   id: string;
@@ -11,6 +11,7 @@ interface Task {
 export default function TaskList() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [input, setInput] = useState("");
+  const listRef = useRef<HTMLDivElement>(null);
 
   const addTask = () => {
     const trimmed = input.trim();
@@ -66,7 +67,7 @@ export default function TaskList() {
         </button>
       </div>
 
-      <div className="flex flex-col gap-2 overflow-y-auto" style={{ maxHeight: "calc(100vh - 300px)" }}>
+      <div ref={listRef} className="flex flex-col gap-2 overflow-y-auto" style={{ maxHeight: "calc(100dvh - 300px)" }}>
         {tasks.length === 0 && (
           <p className="text-center py-8" style={{ color: text, opacity: 0.5 }}>
             Henüz görev yok. Yukarıdan ekle!
