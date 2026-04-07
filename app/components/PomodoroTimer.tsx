@@ -17,7 +17,7 @@ function playNotificationSound() {
       gain.connect(audioContext.destination);
       osc.frequency.setValueAtTime(freq, start);
       gain.gain.setValueAtTime(0, start);
-      gain.gain.linearRampToValueAtTime(0.25, start + 0.03);
+      gain.gain.linearRampToValueAtTime(0.2, start + 0.03);
       gain.gain.exponentialRampToValueAtTime(0.001, start + dur);
       osc.start(start);
       osc.stop(start + dur);
@@ -44,32 +44,33 @@ function sendBrowserNotification(mode: Mode) {
   }
 }
 
-// Get updateStats from parent (injected via window)
 function useStats() {
   const [points, setPoints] = useState(0);
+  const [focusTime, setFocusTime] = useState(0);
   
   useEffect(() => {
-    const updatePoints = () => {
+    const updateStats = () => {
       const stored = localStorage.getItem("yaverfx-stats");
       if (stored) {
         const stats = JSON.parse(stored);
         setPoints(stats.points || 0);
+        setFocusTime(stats.focusTime || 0);
       }
     };
-    updatePoints();
-    const interval = setInterval(updatePoints, 1000);
+    updateStats();
+    const interval = setInterval(updateStats, 1000);
     return () => clearInterval(interval);
   }, []);
   
-  return points;
+  return { points, focusTime };
 }
 
 export default function PomodoroTimer() {
-  const [dimensions, setDimensions] = useState({ width: 240, height: 240 });
+  const [dimensions, setDimensions] = useState({ width: 260, height: 260 });
 
   useEffect(() => {
     const update = () => {
-      const w = Math.min(window.innerWidth * 0.65, 240);
+      const w = Math.min(window.innerWidth * 0.7, 260);
       setDimensions({ width: w, height: w });
     };
     update();
@@ -81,13 +82,13 @@ export default function PomodoroTimer() {
   const [mode, setMode] = useState<Mode>("work");
   const [timeLeft, setTimeLeft] = useState(WORK_DURATION);
   const [isRunning, setIsRunning] = useState(false);
-  const [sessionTime, setSessionTime] = useState(0); // Track this session's focus time
+  const [sessionTime, setSessionTime] = useState(0);
   
   const endTimeRef = useRef<number | null>(null);
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
   const noSleepVideoRef = useRef<HTMLVideoElement | null>(null);
   const sessionStartRef = useRef<number>(0);
-  const points = useStats();
+  const { points } = useStats();
 
   const updateStats = (updates: any) => {
     try {
@@ -164,9 +165,8 @@ export default function PomodoroTimer() {
     sendBrowserNotification(mode);
     
     if (mode === "work") {
-      // Award points and update stats
       const sessionMinutes = Math.round(sessionTime / 60);
-      const earnedPoints = 10 + (sessionMinutes >= 25 ? 5 : 0); // Base 10 + bonus for full session
+      const earnedPoints = 10 + (sessionMinutes >= 25 ? 5 : 0);
       const currentStats = JSON.parse(localStorage.getItem("yaverfx-stats") || '{"focusTime":0,"tasksDone":0,"streak":0,"points":0}');
       
       updateStats({
@@ -183,7 +183,6 @@ export default function PomodoroTimer() {
       endTimeRef.current = Date.now() + timeLeft * 1000;
       setIsRunning(true);
     } else {
-      // Track partial session time when pausing
       if (sessionStartRef.current > 0) {
         setSessionTime(prev => prev + (Date.now() - sessionStartRef.current) / 1000);
       }
@@ -193,7 +192,6 @@ export default function PomodoroTimer() {
   };
 
   const resetTimer = () => {
-    // Save partial session time before reset
     if (isRunning && sessionStartRef.current > 0) {
       setSessionTime(prev => prev + (Date.now() - sessionStartRef.current) / 1000);
     }
@@ -211,9 +209,7 @@ export default function PomodoroTimer() {
       if (!endTimeRef.current) return;
       const remaining = Math.max(0, Math.round((endTimeRef.current - Date.now()) / 1000));
       
-      // Update real-time focus time
       if (mode === "work" && sessionStartRef.current > 0) {
-        const elapsed = (Date.now() - sessionStartRef.current) / 1000;
         setSessionTime(prev => prev + 0.2);
       }
       
@@ -236,13 +232,10 @@ export default function PomodoroTimer() {
   const seconds = timeLeft % 60;
   const display = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
   
-  const stroke = Math.max(size / 25, 10);
+  const stroke = Math.max(size / 25, 12);
   const radius = (size / 2) - stroke;
   const circumference = 2 * Math.PI * radius;
   const progress = (mode === "work" ? WORK_DURATION : BREAK_DURATION - timeLeft) / (mode === "work" ? WORK_DURATION : BREAK_DURATION);
-
-  const text = "var(--theme-text)";
-  const accent = "var(--theme-accent)";
 
   return (
     <div className="timer-wrapper">
@@ -263,27 +256,35 @@ export default function PomodoroTimer() {
 
       <div className="timer-ring">
         <svg width={size} height={size}>
+          {/* Background ring */}
           <circle
             cx={size/2}
             cy={size/2}
             r={radius}
             fill="none"
-            stroke={text}
+            stroke="rgba(255,255,255,0.05)"
             strokeWidth={stroke}
-            style={{ opacity: 0.1 }}
           />
+          {/* Progress ring with breathe animation */}
           <circle
+            className={isRunning ? "progress-ring animate" : "progress-ring"}
             cx={size/2}
             cy={size/2}
             r={radius}
             fill="none"
-            stroke={accent}
+            stroke="url(#gradient)"
             strokeWidth={stroke}
             strokeLinecap="round"
             strokeDasharray={circumference}
             strokeDashoffset={circumference * (1 - progress)}
-            style={{ transition: "stroke-dashoffset 0.3s ease-out" }}
+            style={{ transition: "stroke-dashoffset 0.5s ease-out" }}
           />
+          <defs>
+            <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="var(--theme-accent)" />
+              <stop offset="100%" stopColor="var(--theme-accent-light)" />
+            </linearGradient>
+          </defs>
         </svg>
         
         <div className="timer-display">
