@@ -4,15 +4,16 @@
   "description": "Odak & Üretkenlik Uygulaması",
   "start_url": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#09090b",
   "theme_color": "#f43f5e",
-  "orientation": "portrait",
+  "scope": "/",
   "icons": [
     {
       "src": "/favicon.ico",
-      "sizes": "48x48",
+      "sizes": "48x48 64x64 128x128 256x256",
       "type": "image/x-icon",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "/apple-touch-icon.png",
@@ -20,5 +21,9 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ]
+  ],
+  "categories": ["productivity", "utilities"],
+  "lang": "tr",
+  "dir": "ltr",
+  "prefer_related_applications": false
 }

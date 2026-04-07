@@ -6,10 +6,6 @@
   --theme-accent: #f43f5e;
   --theme-secondary: #18181b;
   --theme-border: #27272a;
-  
-  /* Safe areas */
-  --sat: env(safe-area-inset-top, 0px);
-  --sab: env(safe-area-inset-bottom, 0px);
 }
 
 [data-theme="modern"] {
@@ -59,28 +55,58 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-html {
-  height: 100%;
-  width: 100%;
-  overflow: hidden;
-}
-
-body {
+html, body {
   height: 100%;
   width: 100%;
   overflow: hidden;
   background: var(--theme-bg);
   color: var(--theme-text);
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro", system-ui, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
   touch-action: manipulation;
   overscroll-behavior: none;
+  /* iOS PWA için kritik */
+  -webkit-overflow-scrolling: touch;
 }
 
-@layer utilities {
-  .h-safe { height: calc(100vh - var(--sat) - var(--sab)); }
-  .pt-safe { padding-top: var(--sat); }
-  .pb-safe { padding-bottom: var(--sab); }
-  .min-h-44 { min-height: 44px; }
-  .min-w-44 { min-width: 44px; }
+/* iOS Safari PWA için safe area desteği */
+@supports (padding: max(0px)) {
+  body {
+    padding-left: max(0px, env(safe-area-inset-left));
+    padding-right: max(0px, env(safe-area-inset-right));
+    padding-top: max(0px, env(safe-area-inset-top));
+    padding-bottom: max(0px, env(safe-area-inset-bottom));
+  }
+}
+
+/* PWA fullscreen için */
+@supports (height: 100dvh) {
+  .fullscreen-height {
+    height: 100dvh;
+  }
+}
+
+/* Scrollbarı gizle ama scrollu aktif tut */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* iOS specific fixes */
+@supports (-webkit-touch-callout: none) {
+  html, body {
+    height: -webkit-fill-available;
+  }
+  
+  body {
+    /* Prevent bounce effect */
+    position: fixed;
+    width: 100%;
+    height: 100%;
+  }
 }
