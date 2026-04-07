@@ -55,58 +55,130 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-html, body {
+html {
   height: 100%;
-  width: 100%;
+  overflow: hidden;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  height: 100%;
   overflow: hidden;
   background: var(--theme-bg);
   color: var(--theme-text);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
-  -webkit-text-size-adjust: 100%;
   touch-action: manipulation;
-  overscroll-behavior: none;
-  /* iOS PWA için kritik */
   -webkit-overflow-scrolling: touch;
 }
 
-/* iOS Safari PWA için safe area desteği */
-@supports (padding: max(0px)) {
-  body {
-    padding-left: max(0px, env(safe-area-inset-left));
-    padding-right: max(0px, env(safe-area-inset-right));
-    padding-top: max(0px, env(safe-area-inset-top));
-    padding-bottom: max(0px, env(safe-area-inset-bottom));
+/* iOS Safari PWA fullscreen container */
+.app-container {
+  /* Dynamic viewport height - iOS Safari'de çalışır */
+  height: 100dvh;
+  height: -webkit-fill-available;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--theme-bg);
+  overflow: hidden;
+  /* iOS'ta bounce scroll engelle */
+  overscroll-behavior: none;
+}
+
+/* Header */
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  /* Safe area - çentikten kaçınma */
+  padding-top: max(12px, env(safe-area-inset-top, 0px));
+  background-color: var(--theme-bg);
+  flex-shrink: 0;
+}
+
+/* Main content */
+.app-main {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  /* iOS bounce engelle */
+  overscroll-behavior: none;
+}
+
+/* Navigation */
+.app-nav {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 8px 8px;
+  /* Safe area - home indicator'dan kaçınma */
+  padding-bottom: max(8px, env(safe-area-inset-bottom, 0px));
+  background-color: var(--theme-secondary);
+  border-top: 1px solid var(--theme-border);
+  flex-shrink: 0;
+}
+
+/* Navigation buttons */
+.nav-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  min-height: 44px;
+  min-width: 44px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--theme-text);
+  opacity: 0.5;
+  transition: opacity 0.2s ease;
+}
+
+.nav-btn.active {
+  opacity: 1;
+  color: var(--theme-accent);
+}
+
+.nav-icon {
+  font-size: 20px;
+  margin-bottom: 4px;
+}
+
+.nav-label {
+  font-size: 10px;
+  font-weight: 500;
+}
+
+/* iOS Safari specific */
+@supports (-webkit-touch-callout: none) {
+  .app-container {
+    height: -webkit-fill-available;
   }
 }
 
-/* PWA fullscreen için */
+/* Android Chrome için 100dvh */
 @supports (height: 100dvh) {
-  .fullscreen-height {
+  .app-container {
     height: 100dvh;
   }
 }
 
-/* Scrollbarı gizle ama scrollu aktif tut */
-.hide-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-
-.hide-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-/* iOS specific fixes */
-@supports (-webkit-touch-callout: none) {
-  html, body {
-    height: -webkit-fill-available;
+/* Landscape mode'da düzeltme */
+@media (orientation: landscape) and (max-height: 500px) {
+  .app-header {
+    padding: 8px 16px;
   }
   
-  body {
-    /* Prevent bounce effect */
-    position: fixed;
-    width: 100%;
-    height: 100%;
+  .app-nav {
+    padding: 4px 8px;
+    padding-bottom: max(4px, env(safe-area-inset-bottom, 0px));
   }
 }

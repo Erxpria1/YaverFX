@@ -1,161 +1,96 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
+import PomodoroTimer from "./components/PomodoroTimer";
+import TaskList from "./components/TaskList";
+import AmbientSounds from "./components/AmbientSounds";
+import SiteBlocker from "./components/SiteBlocker";
+import RewardSystem from "./components/RewardSystem";
+import ThemeSelector from "./components/ThemeSelector";
 
-// PWA için viewport height
-function useViewportHeight() {
-  const [height, setHeight] = useState(
-    typeof window !== "undefined" ? window.innerHeight : 700
-  );
+type Page = "timer" | "tasks" | "sounds" | "blocker" | "rewards";
 
-  useEffect(() => {
-    const updateHeight = () => {
-      // iOS Safari için dynamic viewport height
-      const vh = window.innerHeight;
-      // Fallback için visualViewport kullan
-      if (window.visualViewport) {
-        setHeight(vh);
-      } else {
-        setHeight(vh);
-      }
-    };
+const TimerIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="12" cy="12" r="10"/>
+    <polyline points="12 6 12 12 16 14"/>
+  </svg>
+);
 
-    updateHeight();
-    window.addEventListener("resize", updateHeight);
-    
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener("resize", updateHeight);
-    }
+const TasksIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M9 11l3 3L22 4"/>
+    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+  </svg>
+);
 
-    return () => {
-      window.removeEventListener("resize", updateHeight);
-      if (window.visualViewport) {
-        window.visualViewport.removeEventListener("resize", updateHeight);
-      }
-    };
-  }, []);
+const SoundsIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M11 5L6 9H2v6h4l5 4V5z"/>
+    <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
+  </svg>
+);
 
-  return height;
-}
+const BlockerIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="12" cy="12" r="10"/>
+    <path d="M4.93 4.93l14.14 14.14"/>
+  </svg>
+);
+
+const RewardsIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="12" cy="8" r="6"/>
+    <path d="M15.477 12.89L17 22l-7-4-7 4l1.523-9.11"/>
+  </svg>
+);
+
+const NAV_ITEMS: { id: Page; label: string; icon: React.ReactNode }[] = [
+  { id: "timer", label: "Timer", icon: <TimerIcon /> },
+  { id: "tasks", label: "Görevler", icon: <TasksIcon /> },
+  { id: "sounds", label: "Sesler", icon: <SoundsIcon /> },
+  { id: "blocker", label: "Engelle", icon: <BlockerIcon /> },
+  { id: "rewards", label: "Ödüller", icon: <RewardsIcon /> },
+];
 
 export default function Home() {
-  const viewportHeight = useViewportHeight();
-  const [currentPage, setCurrentPage] = useState<string>("timer");
+  const [currentPage, setCurrentPage] = useState<Page>("timer");
   
-  // Lazy load components
-  const [TimerComponent, setTimerComponent] = useState<React.ComponentType | null>(null);
-  const [TasksComponent, setTasksComponent] = useState<React.ComponentType | null>(null);
-  const [SoundsComponent, setSoundsComponent] = useState<React.ComponentType | null>(null);
-  const [BlockerComponent, setBlockerComponent] = useState<React.ComponentType | null>(null);
-  const [RewardsComponent, setRewardsComponent] = useState<React.ComponentType | null>(null);
-  const [ThemeComponent, setThemeComponent] = useState<React.ComponentType | null>(null);
-
-  useEffect(() => {
-    import("./components/PomodoroTimer").then(m => setTimerComponent(() => m.default));
-    import("./components/TaskList").then(m => setTasksComponent(() => m.default));
-    import("./components/AmbientSounds").then(m => setSoundsComponent(() => m.default));
-    import("./components/SiteBlocker").then(m => setBlockerComponent(() => m.default));
-    import("./components/RewardSystem").then(m => setRewardsComponent(() => m.default));
-    import("./components/ThemeSelector").then(m => setThemeComponent(() => m.default));
-  }, []);
-
-  const renderPage = useCallback(() => {
+  const renderPage = () => {
     switch (currentPage) {
-      case "timer": return TimerComponent ? <TimerComponent /> : null;
-      case "tasks": return TasksComponent ? <TasksComponent /> : null;
-      case "sounds": return SoundsComponent ? <SoundsComponent /> : null;
-      case "blocker": return BlockerComponent ? <BlockerComponent /> : null;
-      case "rewards": return RewardsComponent ? <RewardsComponent /> : null;
-      default: return TimerComponent ? <TimerComponent /> : null;
+      case "timer": return <PomodoroTimer />;
+      case "tasks": return <TaskList />;
+      case "sounds": return <AmbientSounds />;
+      case "blocker": return <SiteBlocker />;
+      case "rewards": return <RewardSystem />;
+      default: return <PomodoroTimer />;
     }
-  }, [currentPage, TimerComponent, TasksComponent, SoundsComponent, BlockerComponent, RewardsComponent]);
-
-  const pages = [
-    { id: "timer", label: "Timer", icon: "⏱️" },
-    { id: "tasks", label: "Görevler", icon: "📋" },
-    { id: "sounds", label: "Sesler", icon: "🔊" },
-    { id: "blocker", label: "Engelle", icon: "🚫" },
-    { id: "rewards", label: "Ödüller", icon: "🏆" },
-  ];
-
-  const accent = "var(--theme-accent)";
+  };
+  
   const text = "var(--theme-text)";
-  const secondary = "var(--theme-secondary)";
-  const border = "var(--theme-border)";
 
   return (
-    <div 
-      style={{ 
-        height: `${viewportHeight}px`,
-        backgroundColor: "var(--theme-bg)",
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-      }}
-    >
-      {/* Header - iOS safe area aware */}
-      <header 
-        style={{ 
-          display: "flex", 
-          alignItems: "center", 
-          justifyContent: "space-between", 
-          padding: "12px 16px",
-          paddingTop: "max(12px, env(safe-area-inset-top))",
-          backgroundColor: "var(--theme-bg)",
-        }}
-      >
+    <div className="app-container">
+      <header className="app-header">
         <h1 style={{ fontSize: "18px", fontWeight: "600", color: text }}>
           YaverFX
         </h1>
-        {ThemeComponent && <ThemeComponent />}
+        <ThemeSelector />
       </header>
       
-      {/* Main Content - scrollable area */}
-      <main style={{ 
-        flex: 1, 
-        overflow: "auto",
-        WebkitOverflowScrolling: "touch",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "16px",
-      }}>
+      <main className="app-main">
         {renderPage()}
       </main>
       
-      {/* Bottom Navigation - iOS safe area aware */}
-      <nav 
-        style={{ 
-          display: "flex", 
-          justifyContent: "space-around", 
-          alignItems: "center",
-          padding: "8px 8px",
-          paddingBottom: "max(8px, env(safe-area-inset-bottom))",
-          backgroundColor: secondary,
-          borderTop: `1px solid ${border}`,
-        }}
-      >
-        {pages.map((item) => (
+      <nav className="app-nav">
+        {NAV_ITEMS.map((item) => (
           <button
             key={item.id}
             onClick={() => setCurrentPage(item.id)}
-            style={{ 
-              display: "flex", 
-              flexDirection: "column", 
-              alignItems: "center", 
-              justifyContent: "center",
-              padding: "8px 12px",
-              minHeight: "44px",
-              minWidth: "44px",
-              background: "transparent",
-              border: "none",
-              color: currentPage === item.id ? accent : text,
-              opacity: currentPage === item.id ? 1 : 0.5,
-              cursor: "pointer",
-            }}
+            className={`nav-btn ${currentPage === item.id ? "active" : ""}`}
           >
-            <span style={{ fontSize: "20px", marginBottom: "4px" }}>{item.icon}</span>
-            <span style={{ fontSize: "10px", fontWeight: "500" }}>{item.label}</span>
+            <span className="nav-icon">{item.icon}</span>
+            <span className="nav-label">{item.label}</span>
           </button>
         ))}
       </nav>
