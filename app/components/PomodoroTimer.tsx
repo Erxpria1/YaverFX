@@ -62,23 +62,19 @@ export default function PomodoroTimer() {
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
 
   const acquireWakeLock = useCallback(async () => {
-    if ("wakeLock" in navigator) {
+    if ("wakeLock" in navigator && !wakeLockRef.current) {
       try {
         wakeLockRef.current = await navigator.wakeLock.request("screen");
       } catch (e) {
-        console.error("Wake lock error:", e);
+        // Silent fail
       }
     }
   }, []);
 
-  const releaseWakeLock = useCallback(async () => {
+  const releaseWakeLock = useCallback(() => {
     if (wakeLockRef.current) {
-      try {
-        await wakeLockRef.current.release();
-        wakeLockRef.current = null;
-      } catch (e) {
-        console.error("Wake lock release error:", e);
-      }
+      wakeLockRef.current.release().catch(() => {});
+      wakeLockRef.current = null;
     }
   }, []);
 
@@ -89,18 +85,23 @@ export default function PomodoroTimer() {
     } else {
       releaseWakeLock();
     }
-    return () => releaseWakeLock();
   }, [isRunning, acquireWakeLock, releaseWakeLock]);
 
   useEffect(() => {
+    if (!isRunning) return;
+    
     const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible" && isRunning && "wakeLock" in navigator) {
+      if (document.visibilityState === "visible") {
         acquireWakeLock();
       }
     };
+    
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, [isRunning, acquireWakeLock]);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      releaseWakeLock();
+    };
+  }, [isRunning, acquireWakeLock, releaseWakeLock]);
 
   const handleTimerComplete = useCallback(() => {
     playNotificationSound();
