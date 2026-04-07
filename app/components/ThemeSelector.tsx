@@ -107,45 +107,86 @@ export default function ThemeSelector() {
     setShowThemes(false);
   };
 
+  // Get current theme's accent color
+  const currentTheme = THEMES.find(t => t.id === activeTheme);
+  const accentColor = currentTheme?.colors.accent || "#f43f5e";
+
   return (
     <div className="relative">
       <button
         onClick={() => setShowThemes(!showThemes)}
-        className="flex items-center gap-2 p-2 rounded-lg transition-colors"
-        style={{ color: "var(--theme-accent)" }}
+        className="flex items-center justify-center w-12 h-12 rounded-full transition-all touch-manipulation"
+        style={{ 
+          backgroundColor: "var(--theme-secondary)",
+          color: accentColor,
+        }}
+        aria-label="Tema değiştir"
       >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <circle cx="12" cy="12" r="5" />
           <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
         </svg>
       </button>
 
       {showThemes && (
-        <div className="absolute bottom-full right-0 mb-2 bg-zinc-900 border border-zinc-700 rounded-xl p-2 shadow-xl z-50">
-          <div className="grid grid-cols-5 gap-2">
-            {THEMES.map((theme) => (
-              <button
-                key={theme.id}
-                onClick={() => handleThemeChange(theme.id)}
-                className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-all ${
-                  activeTheme === theme.id
-                    ? "ring-2 ring-white"
-                    : "hover:bg-zinc-800"
-                }`}
-                style={{ backgroundColor: theme.colors.bg }}
-                title={theme.name}
-              >
-                <div
-                  className="w-6 h-6 rounded-full"
-                  style={{
-                    background: `linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.secondary})`,
+        <div 
+          className="fixed inset-0 z-50 flex items-end justify-center pb-24"
+          onClick={() => setShowThemes(false)}
+        >
+          <div 
+            className="w-full max-w-md bg-[var(--theme-secondary)] border-t border-zinc-700 rounded-t-2xl p-4 animate-slide-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Handle bar */}
+            <div className="flex justify-center mb-4">
+              <div className="w-12 h-1.5 bg-zinc-600 rounded-full" />
+            </div>
+
+            <h3 className="text-lg font-semibold text-center mb-4" style={{ color: "var(--theme-text)" }}>
+              Tema Seç
+            </h3>
+
+            <div className="grid grid-cols-5 gap-3">
+              {THEMES.map((theme) => (
+                <button
+                  key={theme.id}
+                  onClick={() => handleThemeChange(theme.id)}
+                  className={`flex flex-col items-center gap-2 p-3 rounded-xl transition-all touch-manipulation ${
+                    activeTheme === theme.id
+                      ? "ring-2 ring-white"
+                      : "opacity-70 hover:opacity-100"
+                  }`}
+                  style={{ 
+                    backgroundColor: theme.colors.bg,
                   }}
-                />
-                <span className="text-[8px]" style={{ color: theme.colors.text }}>
-                  {theme.name}
-                </span>
-              </button>
-            ))}
+                >
+                  <div
+                    className="w-10 h-10 rounded-full shadow-lg"
+                    style={{
+                      background: `linear-gradient(135deg, ${theme.colors.accent} 0%, ${theme.colors.secondary} 100%)`,
+                      boxShadow: activeTheme === theme.id 
+                        ? `0 0 15px ${theme.colors.accent}80` 
+                        : 'none'
+                    }}
+                  />
+                  <span className="text-xs font-medium" style={{ color: theme.colors.text }}>
+                    {theme.name}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {/* Close button */}
+            <button
+              onClick={() => setShowThemes(false)}
+              className="w-full mt-4 py-3 rounded-xl font-medium transition-colors"
+              style={{ 
+                backgroundColor: "var(--theme-accent)",
+                color: "#fff"
+              }}
+            >
+              Kapat
+            </button>
           </div>
         </div>
       )}

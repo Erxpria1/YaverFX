@@ -19,7 +19,7 @@ const TABS: TabConfig[] = [
     id: "tasks",
     label: "Görevler",
     icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
         <path d="M9 11l3 3L22 4" />
         <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
       </svg>
@@ -29,7 +29,7 @@ const TABS: TabConfig[] = [
     id: "sounds",
     label: "Sesler",
     icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
         <path d="M11 5L6 9H2v6h4l5 4V5z" />
         <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" />
       </svg>
@@ -39,7 +39,7 @@ const TABS: TabConfig[] = [
     id: "blocker",
     label: "Engelle",
     icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
         <circle cx="12" cy="12" r="10" />
         <path d="M4.93 4.93l14.14 14.14" />
       </svg>
@@ -49,7 +49,7 @@ const TABS: TabConfig[] = [
     id: "rewards",
     label: "Ödüller",
     icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
         <circle cx="12" cy="8" r="6" />
         <path d="M15.477 12.89L17 22l-7-4-7 4l1.523-9.11" />
       </svg>
@@ -66,7 +66,7 @@ export default function TabLayout() {
     setTimeout(() => {
       setActiveTab("timer");
       setIsClosing(false);
-    }, 200);
+    }, 250);
   };
 
   const handleOverlayClick = (e: React.MouseEvent) => {
@@ -96,71 +96,85 @@ export default function TabLayout() {
 
   return (
     <>
-      {/* Bottom Tab Bar - Fixed */}
-      <div className="fixed bottom-0 left-0 right-0 bg-zinc-900 border-t border-zinc-800 px-2 py-2 pb-safe z-50">
-        <div className="flex justify-around items-center max-w-md mx-auto">
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-colors touch-manipulation ${
-                activeTab === tab.id
-                  ? "text-zinc-100"
-                  : "text-zinc-500 hover:text-zinc-300"
-              }`}
-              style={{ WebkitTapHighlightColor: "transparent" }}
-            >
-              <div className={activeTab === tab.id ? "text-rose-400" : ""}>
-                {tab.icon}
-              </div>
-              <span className="text-[10px] font-medium">{tab.label}</span>
-            </button>
-          ))}
-        </div>
+      {/* Bottom Tab Bar - Fixed with safe area */}
+      <div 
+        className="fixed bottom-0 left-0 right-0 z-50 flex justify-around items-center px-2 py-3 pb-safe"
+        style={{ 
+          backgroundColor: "var(--theme-secondary)",
+          borderTop: "1px solid var(--theme-accent)",
+          opacity: 0.95,
+        }}
+      >
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className="flex flex-col items-center gap-1 p-2 rounded-xl transition-all duration-200 touch-manipulation active:scale-95"
+            style={{ 
+              WebkitTapHighlightColor: "transparent",
+              color: activeTab === tab.id ? "var(--theme-accent)" : "var(--theme-text)",
+              opacity: activeTab === tab.id ? 1 : 0.6,
+            }}
+          >
+            <div style={{ 
+              color: activeTab === tab.id ? "var(--theme-accent)" : undefined,
+              filter: activeTab === tab.id ? `drop-shadow(0 0 6px var(--theme-accent))` : "none"
+            }}>
+              {tab.icon}
+            </div>
+            <span className="text-[11px] font-medium">{tab.label}</span>
+          </button>
+        ))}
       </div>
 
       {/* Modal Overlay */}
       {activeTab !== "timer" && (
         <div
-          className={`fixed inset-0 bg-black/60 z-40 flex items-end justify-center pb-20 ${
-            isClosing ? "animate-fade-out" : "animate-fade-in"
-          }`}
+          className="fixed inset-0 z-40 flex items-end justify-center pb-safe"
           onClick={handleOverlayClick}
           style={{
+            backgroundColor: "rgba(0, 0, 0, 0.6)",
+            backdropFilter: "blur(4px)",
             animation: isClosing ? "fadeOut 0.2s ease-out" : "fadeIn 0.2s ease-out",
           }}
         >
           <div
-            className={`bg-zinc-900 w-full max-w-md rounded-t-2xl border-t border-zinc-800 p-4 pb-8 max-h-[70vh] overflow-y-auto ${
-              isClosing ? "animate-slide-down" : "animate-slide-up"
-            }`}
-            style={{
-              animation: isClosing ? "slideDown 0.2s ease-out" : "slideUp 0.3s ease-out",
+            className="w-full max-w-md rounded-t-3xl border-t p-4 pb-8 max-h-[75vh] overflow-y-auto"
+            style={{ 
+              backgroundColor: "var(--theme-secondary)",
+              borderColor: "var(--theme-accent)",
+              animation: isClosing ? "slideDown 0.25s ease-out" : "slideUp 0.3s ease-out",
               touchAction: "pan-y",
               WebkitOverflowScrolling: "touch",
             }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Handle bar */}
-            <div className="flex justify-center mb-4">
-              <div className="w-10 h-1 bg-zinc-700 rounded-full" />
+            <div className="flex justify-center mb-4 mt-2">
+              <div 
+                className="w-12 h-1.5 rounded-full" 
+                style={{ backgroundColor: "var(--theme-accent)" }}
+              />
             </div>
 
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-zinc-100">{getTitle()}</h2>
+              <h2 className="text-xl font-bold" style={{ color: "var(--theme-text)" }}>
+                {getTitle()}
+              </h2>
               <button
                 onClick={closeModal}
-                className="p-2 text-zinc-500 hover:text-zinc-300"
+                className="p-2 rounded-full transition-colors active:scale-90"
+                style={{ color: "var(--theme-text)", opacity: 0.7 }}
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M18 6L6 18M6 6l12 12" />
                 </svg>
               </button>
             </div>
 
             {/* Content */}
-            <div className="animate-content-appear">
+            <div style={{ animation: "contentAppear 0.3s ease-out" }}>
               {renderContent()}
             </div>
           </div>
