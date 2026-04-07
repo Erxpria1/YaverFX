@@ -17,119 +17,81 @@ interface Stats {
   points: number;
 }
 
-const DEFAULT_STATS: Stats = {
-  focusTime: 0,
-  tasksDone: 0,
-  streak: 0,
-  points: 0,
-};
+const DEFAULT_STATS: Stats = { focusTime: 0, tasksDone: 0, streak: 0, points: 0 };
 
-const NAV_ITEMS = [
-  { id: "timer", label: "Timer", emoji: "⏱️" },
-  { id: "tasks", label: "Görevler", emoji: "✅" },
-  { id: "sounds", label: "Sesler", emoji: "🎵" },
-  { id: "blocker", label: "Engelle", emoji: "🚫" },
-  { id: "rewards", label: "Ödüller", emoji: "🏆" },
-];
-
-let statsListeners: ((stats: Stats) => void)[] = [];
-
-export function updateStats(updates: Partial<Stats>) {
-  const stored = localStorage.getItem("yaverfx-stats");
-  const current = stored ? { ...DEFAULT_STATS, ...JSON.parse(stored) } : { ...DEFAULT_STATS };
-  const updated = { ...current, ...updates };
-  localStorage.setItem("yaverfx-stats", JSON.stringify(updated));
-  statsListeners.forEach(fn => fn(updated));
-}
-
-export function subscribeToStats(callback: (stats: Stats) => void) {
-  statsListeners.push(callback);
-  return () => { statsListeners = statsListeners.filter(fn => fn !== callback); };
-}
-
-export function getStats(): Stats {
-  const stored = localStorage.getItem("yaverfx-stats");
-  return stored ? { ...DEFAULT_STATS, ...JSON.parse(stored) } : { ...DEFAULT_STATS };
-}
+const TABS = [
+  { id: "timer", label: "Timer", icon: "⏱️" },
+  { id: "tasks", label: "Görev", icon: "✅" },
+  { id: "sounds", label: "Ses", icon: "🎵" },
+  { id: "blocker", label: "Blok", icon: "🚫" },
+  { id: "rewards", label: "Ödül", icon: "🏆" },
+] as const;
 
 export default function Home() {
-  const [currentPage, setCurrentPage] = useState<Page>("timer");
+  const [page, setPage] = useState<Page>("timer");
   const [stats, setStats] = useState<Stats>(DEFAULT_STATS);
-  const [focusMode, setFocusMode] = useState(false);
+  const [focus, setFocus] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem("yaverfx-page");
-    if (saved && ["timer", "tasks", "sounds", "blocker", "rewards"].includes(saved)) {
-      setCurrentPage(saved as Page);
-    }
-    const savedFocus = localStorage.getItem("yaverfx-focus-mode");
-    if (savedFocus === "true") setFocusMode(true);
+    const savedPage = localStorage.getItem("yaverfx-page") as Page;
+    if (savedPage && TABS.some(t => t.id === savedPage)) setPage(savedPage);
+    if (localStorage.getItem("yaverfx-focus-mode") === "true") setFocus(true);
   }, []);
-
-  const handlePageChange = (page: Page) => {
-    setCurrentPage(page);
-    localStorage.setItem("yaverfx-page", page);
-  };
-
-  const toggleFocusMode = () => {
-    const newFocus = !focusMode;
-    setFocusMode(newFocus);
-    localStorage.setItem("yaverfx-focus-mode", String(newFocus));
-  };
 
   useEffect(() => {
-    setStats(getStats());
-    const unsubscribe = subscribeToStats(setStats);
-    return unsubscribe;
+    const stored = localStorage.getItem("yaverfx-stats");
+    if (stored) setStats({ ...DEFAULT_STATS, ...JSON.parse(stored) });
+    const listener = () => {
+      const s = localStorage.getItem("yaverfx-stats");
+      if (s) setStats({ ...DEFAULT_STATS, ...JSON.parse(s) });
+    };
+    window.addEventListener("yaverfx-stats-update", listener);
+    return () => window.removeEventListener("yaverfx-stats-update", listener);
   }, []);
 
-  const renderPage = () => {
-    switch (currentPage) {
+  const changePage = (p: Page) => {
+    setPage(p);
+    localStorage.setItem("yaverfx-page", p);
+  };
+
+  const toggleFocus = () => {
+    const next = !focus;
+    setFocus(next);
+    localStorage.setItem("yaverfx-focus-mode", String(next));
+  };
+
+  const render = () => {
+    switch (page) {
       case "timer": return <PomodoroTimer />;
       case "tasks": return <TaskList />;
       case "sounds": return <AmbientSounds />;
       case "blocker": return <SiteBlocker />;
       case "rewards": return <RewardSystem />;
-      default: return <PomodoroTimer />;
     }
   };
 
   return (
-    <div className={`app-container ${focusMode ? "focus-mode" : ""}`}>
-      {/* Focus Banner */}
-      {focusMode && (
-        <div className="focus-banner">
-          <span>🎯 Focus Modu</span>
-          <button onClick={toggleFocusMode}>Kapat</button>
+    <div className={`app ${focus ? "focus" : ""}`}>
+      {focus && <div className="focus-bar"><span>🎯 Focus</span><button onClick={toggleFocus}>✕</button></div>}
+      
+      <header className="header">
+        <div className="header-left">
+          <span className="page-icon">{TABS.find(t => t.id === page)?.icon}</span>
+          <h1>{TABS.find(t => t.id === page)?.label}</h1>
         </div>
-      )}
-
-      {/* Header */}
-      <header className="app-header">
-        <h1>YaverFX</h1>
-        <button 
-          onClick={toggleFocusMode}
-          className={`focus-btn-small ${focusMode ? "active" : ""}`}
-        >
-          {focusMode ? "✓" : "○"}
-        </button>
+        <div className="header-right">
+          <button className={`focus-toggle ${focus ? "on" : ""}`} onClick={toggleFocus}>🎯</button>
+          <ThemeSelector />
+        </div>
       </header>
 
-      {/* Main Content */}
-      <main className="app-main">
-        {renderPage()}
-      </main>
+      <main className="main">{render()}</main>
 
-      {/* Bottom Tab Bar */}
-      <nav className="tab-bar">
-        {NAV_ITEMS.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => handlePageChange(item.id as Page)}
-            className={`tab-btn ${currentPage === item.id ? "active" : ""}`}
-          >
-            <span className="tab-emoji">{item.emoji}</span>
-            <span className="tab-label">{item.label}</span>
+      <nav className="tabbar">
+        {TABS.map(tab => (
+          <button key={tab.id} className={`tab ${page === tab.id ? "active" : ""}`} onClick={() => changePage(tab.id as Page)}>
+            <span className="tab-icon">{tab.icon}</span>
+            <span className="tab-label">{tab.label}</span>
           </button>
         ))}
       </nav>
