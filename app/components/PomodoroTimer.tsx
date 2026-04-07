@@ -121,7 +121,7 @@ export default function PomodoroTimer() {
             }}
           />
         </svg>
-        <span className="absolute text-5xl font-mono font-semibold tracking-wider text-zinc-100">
+        <span className="absolute text-4xl sm:text-5xl font-mono font-semibold tracking-wider text-zinc-100">
           {display}
         </span>
       </div>

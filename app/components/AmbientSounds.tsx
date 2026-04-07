@@ -13,7 +13,7 @@ interface SoundConfig {
 const SOUNDS: SoundConfig[] = [
   {
     id: "whiteNoise",
-    label: "White Noise",
+    label: "Beyaz Gürültü",
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M2 12h2M6 8v8M10 4v16M14 8v8M18 6v12M22 12h-2" />
@@ -22,7 +22,7 @@ const SOUNDS: SoundConfig[] = [
   },
   {
     id: "rain",
-    label: "Rain",
+    label: "Yağmur",
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242" />
@@ -32,7 +32,7 @@ const SOUNDS: SoundConfig[] = [
   },
   {
     id: "forest",
-    label: "Forest",
+    label: "Orman",
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M17 14l3-3-3-3" />
@@ -203,22 +203,22 @@ export default function AmbientSounds() {
   }, []);
 
   return (
-    <div className="flex flex-col gap-4 rounded-lg border border-zinc-800 bg-zinc-900/50 p-6">
-      <h2 className="text-sm font-semibold text-zinc-500 uppercase tracking-wider">Ambient Sounds</h2>
+    <div className="flex flex-col gap-3 rounded-lg border border-zinc-800 bg-zinc-900/50 p-4 sm:p-6">
+      <h2 className="text-sm font-semibold text-zinc-500 uppercase tracking-wider">Ambient Sesler</h2>
 
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-2 sm:gap-3">
         {SOUNDS.map((sound) => {
           const state = sounds[sound.id];
           return (
-            <div key={sound.id} className="flex items-center gap-4">
+            <div key={sound.id} className="flex items-center gap-2 sm:gap-4">
               <button
                 onClick={() => toggleSound(sound.id)}
-                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors ${
+                className={`flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-full transition-colors ${
                   state.isPlaying
                     ? "bg-zinc-100 text-zinc-900 hover:bg-white"
                     : "border border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200"
                 }`}
-                aria-label={`${state.isPlaying ? "Pause" : "Play"} ${sound.label}`}
+                aria-label={`${state.isPlaying ? "Duraklat" : "Oynat"} ${sound.label}`}
               >
                 {state.isPlaying ? (
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
@@ -232,11 +232,11 @@ export default function AmbientSounds() {
                 )}
               </button>
 
-              <span className={`w-24 shrink-0 text-sm font-medium transition-colors ${state.isPlaying ? "text-zinc-100" : "text-zinc-500"}`}>
+              <span className={`w-16 sm:w-24 shrink-0 text-xs sm:text-sm font-medium transition-colors ${state.isPlaying ? "text-zinc-100" : "text-zinc-500"}`}>
                 {sound.label}
               </span>
 
-              <div className="flex flex-1 items-center gap-3">
+              <div className="flex flex-1 items-center gap-2 sm:gap-3">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0 text-zinc-600">
                   <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
                   {state.volume > 0.3 && <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />}

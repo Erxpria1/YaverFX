@@ -37,34 +37,34 @@ export default function TaskList() {
   };
 
   return (
-    <div className="flex flex-col gap-6 w-full">
+    <div className="flex flex-col gap-4 w-full px-2 sm:px-0">
       <div className="flex gap-2">
         <input
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Add a task..."
-          className="flex-1 rounded-full bg-zinc-800 border border-zinc-700 px-4 py-3 text-sm text-zinc-100 placeholder-zinc-500 outline-none transition-colors focus:border-zinc-500"
+          placeholder="Görev ekle..."
+          className="flex-1 rounded-full bg-zinc-800 border border-zinc-700 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 outline-none transition-colors focus:border-zinc-500"
         />
         <button
           onClick={addTask}
-          className="rounded-full bg-zinc-100 px-6 py-3 text-sm font-semibold text-zinc-900 transition-colors hover:bg-white"
+          className="rounded-full bg-zinc-100 px-4 py-2 text-sm font-semibold text-zinc-900 transition-colors hover:bg-white"
         >
-          Add
+          Ekle
         </button>
       </div>
 
       <div className="flex flex-col gap-2">
         {tasks.length === 0 && (
-          <p className="text-center text-sm text-zinc-500 py-4">
-            No tasks yet. Add one above!
+          <p className="text-center text-sm text-zinc-500 py-2 sm:py-4">
+            Henüz görev yok. Yukarıdan ekle!
           </p>
         )}
         {tasks.map((task) => (
           <div
             key={task.id}
-            className="flex items-center gap-3 rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-3 transition-colors hover:border-zinc-700"
+            className="flex items-center gap-2 sm:gap-3 rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2 sm:px-4 sm:py-3 transition-colors hover:border-zinc-700"
           >
             <button
               onClick={() => toggleTask(task.id)}
