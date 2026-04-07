@@ -827,7 +827,7 @@ body {
 /* ===== PWA INSTALL PROMPT ===== */
 .pwa-prompt {
   position: fixed;
-  bottom: 80px;
+  bottom: 110px;
   left: 16px;
   right: 16px;
   z-index: 9999;
