@@ -4,73 +4,83 @@
   --theme-bg: #09090b;
   --theme-text: #fafafa;
   --theme-accent: #f43f5e;
-  --theme-secondary: #27272a;
+  --theme-secondary: #18181b;
+  --theme-border: #27272a;
+  
+  /* Safe areas */
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
 }
 
 [data-theme="modern"] {
   --theme-bg: #09090b;
   --theme-text: #fafafa;
   --theme-accent: #f43f5e;
-  --theme-secondary: #27272a;
+  --theme-secondary: #18181b;
+  --theme-border: #27272a;
 }
 
 [data-theme="cyber"] {
-  --theme-bg: #0a0a1a;
-  --theme-text: #e0f7fa;
-  --theme-accent: #00fff0;
-  --theme-secondary: #1a0a2e;
+  --theme-bg: #050510;
+  --theme-text: #a5f3fc;
+  --theme-accent: #00f0ff;
+  --theme-secondary: #0a0a1a;
+  --theme-border: #1a1a3a;
 }
 
 [data-theme="hacker"] {
   --theme-bg: #000000;
   --theme-text: #00ff00;
   --theme-accent: #00ff00;
-  --theme-secondary: #0d1a0d;
+  --theme-secondary: #001a00;
+  --theme-border: #003300;
 }
 
 [data-theme="game"] {
-  --theme-bg: #1a1a2e;
+  --theme-bg: #0f0f1a;
   --theme-text: #ffffff;
   --theme-accent: #ff6b35;
-  --theme-secondary: #16213e;
+  --theme-secondary: #1a1a2e;
+  --theme-border: #2a2a4a;
 }
 
 [data-theme="minimal"] {
   --theme-bg: #ffffff;
-  --theme-text: #1a1a1a;
+  --theme-text: #111111;
   --theme-accent: #2563eb;
-  --theme-secondary: #f3f4f6;
+  --theme-secondary: #f5f5f5;
+  --theme-border: #e5e5e5;
 }
 
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  -webkit-tap-highlight-color: transparent;
 }
 
-html, body {
+html {
   height: 100%;
   width: 100%;
   overflow: hidden;
-  -webkit-tap-highlight-color: transparent;
-  -webkit-touch-callout: none;
-  -webkit-user-select: none;
-  user-select: none;
 }
 
 body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
   background: var(--theme-bg);
   color: var(--theme-text);
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
   touch-action: manipulation;
+  overscroll-behavior: none;
 }
 
 @layer utilities {
-  .scroll-none {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-  .scroll-none::-webkit-scrollbar {
-    display: none;
-  }
+  .h-safe { height: calc(100vh - var(--sat) - var(--sab)); }
+  .pt-safe { padding-top: var(--sat); }
+  .pb-safe { padding-bottom: var(--sab); }
+  .min-h-44 { min-height: 44px; }
+  .min-w-44 { min-width: 44px; }
 }

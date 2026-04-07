@@ -4,186 +4,94 @@ import { useState, useEffect } from "react";
 
 type Theme = "modern" | "cyber" | "hacker" | "game" | "minimal";
 
-interface ThemeConfig {
-  id: Theme;
-  name: string;
-  colors: {
-    bg: string;
-    text: string;
-    accent: string;
-    secondary: string;
-  };
-}
-
-const THEMES: ThemeConfig[] = [
-  {
-    id: "modern",
-    name: "Modern",
-    colors: {
-      bg: "#09090b",
-      text: "#fafafa",
-      accent: "#f43f5e",
-      secondary: "#27272a",
-    },
-  },
-  {
-    id: "cyber",
-    name: "Cyber",
-    colors: {
-      bg: "#0a0a1a",
-      text: "#e0f7fa",
-      accent: "#00fff0",
-      secondary: "#1a0a2e",
-    },
-  },
-  {
-    id: "hacker",
-    name: "Hacker",
-    colors: {
-      bg: "#000000",
-      text: "#00ff00",
-      accent: "#00ff00",
-      secondary: "#0d1a0d",
-    },
-  },
-  {
-    id: "game",
-    name: "Game",
-    colors: {
-      bg: "#1a1a2e",
-      text: "#fff",
-      accent: "#ff6b35",
-      secondary: "#16213e",
-    },
-  },
-  {
-    id: "minimal",
-    name: "Minimal",
-    colors: {
-      bg: "#ffffff",
-      text: "#1a1a1a",
-      accent: "#2563eb",
-      secondary: "#f3f4f6",
-    },
-  },
+const THEMES: { id: Theme; name: string; bg: string; accent: string }[] = [
+  { id: "modern", name: "Modern", bg: "#09090b", accent: "#f43f5e" },
+  { id: "cyber", name: "Cyber", bg: "#050510", accent: "#00f0ff" },
+  { id: "hacker", name: "Hacker", bg: "#000000", accent: "#00ff00" },
+  { id: "game", name: "Game", bg: "#0f0f1a", accent: "#ff6b35" },
+  { id: "minimal", name: "Minimal", bg: "#ffffff", accent: "#2563eb" },
 ];
-
-function getStoredTheme(): Theme {
-  if (typeof window === "undefined") return "modern";
-  const stored = localStorage.getItem("yaverfx-theme");
-  if (stored && THEMES.some((t) => t.id === stored)) {
-    return stored as Theme;
-  }
-  return "modern";
-}
-
-function applyTheme(theme: Theme) {
-  const config = THEMES.find((t) => t.id === theme);
-  if (!config || typeof window === "undefined") return;
-
-  const root = document.documentElement;
-  root.style.setProperty("--theme-bg", config.colors.bg);
-  root.style.setProperty("--theme-text", config.colors.text);
-  root.style.setProperty("--theme-accent", config.colors.accent);
-  root.style.setProperty("--theme-secondary", config.colors.secondary);
-  root.setAttribute("data-theme", theme);
-  
-  localStorage.setItem("yaverfx-theme", theme);
-}
 
 export default function ThemeSelector() {
   const [activeTheme, setActiveTheme] = useState<Theme>("modern");
-  const [showThemes, setShowThemes] = useState(false);
+  const [showPicker, setShowPicker] = useState(false);
 
   useEffect(() => {
-    const theme = getStoredTheme();
-    setActiveTheme(theme);
-    applyTheme(theme);
+    const stored = localStorage.getItem("yaverfx-theme") as Theme;
+    if (stored && THEMES.some(t => t.id === stored)) {
+      setActiveTheme(stored);
+      applyTheme(stored);
+    }
   }, []);
 
-  const handleThemeChange = (theme: Theme) => {
-    setActiveTheme(theme);
-    applyTheme(theme);
-    setShowThemes(false);
+  const applyTheme = (theme: Theme) => {
+    const t = THEMES.find(x => x.id === theme);
+    if (!t) return;
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("yaverfx-theme", theme);
   };
 
-  // Get current theme's accent color
-  const currentTheme = THEMES.find(t => t.id === activeTheme);
-  const accentColor = currentTheme?.colors.accent || "#f43f5e";
+  const handleSelect = (theme: Theme) => {
+    setActiveTheme(theme);
+    applyTheme(theme);
+    setShowPicker(false);
+  };
+
+  const current = THEMES.find(t => t.id === activeTheme);
 
   return (
-    <div className="relative">
+    <div>
       <button
-        onClick={() => setShowThemes(!showThemes)}
-        className="flex items-center justify-center w-12 h-12 rounded-full transition-all touch-manipulation"
-        style={{ 
-          backgroundColor: "var(--theme-secondary)",
-          color: accentColor,
-        }}
-        aria-label="Tema değiştir"
+        onClick={() => setShowPicker(!showPicker)}
+        className="w-11 h-11 flex items-center justify-center rounded-full min-h-44"
+        style={{ backgroundColor: "var(--theme-secondary)" }}
       >
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <circle cx="12" cy="12" r="5" />
-          <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
-        </svg>
+        <div 
+          className="w-5 h-5 rounded-full" 
+          style={{ backgroundColor: current?.accent }}
+        />
       </button>
 
-      {showThemes && (
+      {showPicker && (
         <div 
-          className="fixed inset-0 z-50 flex items-end justify-center pb-24"
-          onClick={() => setShowThemes(false)}
+          className="fixed inset-0 z-50 flex items-end justify-center"
+          onClick={() => setShowPicker(false)}
+          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
         >
           <div 
-            className="w-full max-w-md bg-[var(--theme-secondary)] border-t border-zinc-700 rounded-t-2xl p-4 animate-slide-up"
-            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md rounded-t-3xl p-4 pb-8"
+            onClick={e => e.stopPropagation()}
+            style={{ 
+              backgroundColor: "var(--theme-secondary)",
+              paddingBottom: "calc(env(safe-area-inset-bottom) + 1rem)",
+            }}
           >
-            {/* Handle bar */}
-            <div className="flex justify-center mb-4">
-              <div className="w-12 h-1.5 bg-zinc-600 rounded-full" />
-            </div>
-
-            <h3 className="text-lg font-semibold text-center mb-4" style={{ color: "var(--theme-text)" }}>
+            <div className="w-12 h-1 rounded-full mx-auto mb-4" style={{ backgroundColor: "var(--theme-border)" }} />
+            
+            <h3 className="text-center font-semibold mb-4" style={{ color: "var(--theme-text)" }}>
               Tema Seç
             </h3>
 
             <div className="grid grid-cols-5 gap-3">
-              {THEMES.map((theme) => (
+              {THEMES.map(t => (
                 <button
-                  key={theme.id}
-                  onClick={() => handleThemeChange(theme.id)}
-                  className={`flex flex-col items-center gap-2 p-3 rounded-xl transition-all touch-manipulation ${
-                    activeTheme === theme.id
-                      ? "ring-2 ring-white"
-                      : "opacity-70 hover:opacity-100"
-                  }`}
-                  style={{ 
-                    backgroundColor: theme.colors.bg,
-                  }}
+                  key={t.id}
+                  onClick={() => handleSelect(t.id)}
+                  className="flex flex-col items-center gap-2 p-2 rounded-xl"
                 >
-                  <div
-                    className="w-10 h-10 rounded-full shadow-lg"
-                    style={{
-                      background: `linear-gradient(135deg, ${theme.colors.accent} 0%, ${theme.colors.secondary} 100%)`,
-                      boxShadow: activeTheme === theme.id 
-                        ? `0 0 15px ${theme.colors.accent}80` 
-                        : 'none'
-                    }}
+                  <div 
+                    className={`w-12 h-12 rounded-full ${activeTheme === t.id ? 'ring-2 ring-white' : ''}`}
+                    style={{ backgroundColor: t.accent }}
                   />
-                  <span className="text-xs font-medium" style={{ color: theme.colors.text }}>
-                    {theme.name}
-                  </span>
+                  <span className="text-xs" style={{ color: "var(--theme-text)" }}>{t.name}</span>
                 </button>
               ))}
             </div>
 
-            {/* Close button */}
             <button
-              onClick={() => setShowThemes(false)}
-              className="w-full mt-4 py-3 rounded-xl font-medium transition-colors"
-              style={{ 
-                backgroundColor: "var(--theme-accent)",
-                color: "#fff"
-              }}
+              onClick={() => setShowPicker(false)}
+              className="w-full py-3 rounded-xl font-medium mt-4 min-h-44"
+              style={{ backgroundColor: "var(--theme-accent)", color: "#fff" }}
             >
               Kapat
             </button>
@@ -193,5 +101,3 @@ export default function ThemeSelector() {
     </div>
   );
 }
-
-export { applyTheme, THEMES };

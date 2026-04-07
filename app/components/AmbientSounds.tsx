@@ -4,259 +4,151 @@ import { useState, useRef, useEffect, useCallback } from "react";
 
 type SoundType = "whiteNoise" | "rain" | "forest";
 
-interface SoundConfig {
-  id: SoundType;
-  label: string;
-  icon: React.ReactNode;
-}
-
-const SOUNDS: SoundConfig[] = [
-  {
-    id: "whiteNoise",
-    label: "Beyaz Gürültü",
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M2 12h2M6 8v8M10 4v16M14 8v8M18 6v12M22 12h-2" />
-      </svg>
-    ),
-  },
-  {
-    id: "rain",
-    label: "Yağmur",
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242" />
-        <path d="M16 14v6M8 14v6M12 16v6" />
-      </svg>
-    ),
-  },
-  {
-    id: "forest",
-    label: "Orman",
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M17 14l3-3-3-3" />
-        <path d="M7 14l-3-3 3-3" />
-        <path d="M12 2v8" />
-        <path d="M12 10c-2 2-4 4-4 7a4 4 0 0 0 8 0c0-3-2-5-4-7" />
-      </svg>
-    ),
-  },
+const SOUNDS: { id: SoundType; label: string }[] = [
+  { id: "whiteNoise", label: "Beyaz Gürültü" },
+  { id: "rain", label: "Yağmur" },
+  { id: "forest", label: "Orman" },
 ];
 
-function createWhiteNoiseBuffer(ctx: AudioContext, duration = 2): AudioBuffer {
-  const sampleRate = ctx.sampleRate;
-  const length = sampleRate * duration;
-  const buffer = ctx.createBuffer(1, length, sampleRate);
+function createNoiseBuffer(ctx: AudioContext, type: SoundType) {
+  const rate = ctx.sampleRate;
+  const length = rate * 2;
+  const buffer = ctx.createBuffer(1, length, rate);
   const data = buffer.getChannelData(0);
+  
   for (let i = 0; i < length; i++) {
-    data[i] = Math.random() * 2 - 1;
+    if (type === "whiteNoise") {
+      data[i] = Math.random() * 2 - 1;
+    } else if (type === "rain") {
+      data[i] = (Math.random() * 2 - 1) * 0.4;
+    } else if (type === "forest") {
+      const t = i / rate;
+      data[i] = Math.sin(t * 0.5) * 0.1 + (Math.random() * 2 - 1) * 0.05;
+    }
   }
   return buffer;
-}
-
-function createRainBuffer(ctx: AudioContext, duration = 2): AudioBuffer {
-  const sampleRate = ctx.sampleRate;
-  const length = sampleRate * duration;
-  const buffer = ctx.createBuffer(1, length, sampleRate);
-  const data = buffer.getChannelData(0);
-  for (let i = 0; i < length; i++) {
-    data[i] = (Math.random() * 2 - 1) * 0.5;
-  }
-  return buffer;
-}
-
-function createForestBuffer(ctx: AudioContext, duration = 4): AudioBuffer {
-  const sampleRate = ctx.sampleRate;
-  const length = sampleRate * duration;
-  const buffer = ctx.createBuffer(1, length, sampleRate);
-  const data = buffer.getChannelData(0);
-
-  for (let i = 0; i < length; i++) {
-    const t = i / sampleRate;
-    const noise = Math.random() * 2 - 1;
-    const wind = Math.sin(t * 0.5) * 0.1 + Math.sin(t * 1.3) * 0.05;
-    const bird1 = Math.sin(t * 2800 + Math.sin(t * 8) * 200) * 0.02 * (Math.sin(t * 0.7) > 0.3 ? 1 : 0);
-    const bird2 = Math.sin(t * 3500 + Math.sin(t * 12) * 300) * 0.015 * (Math.sin(t * 1.1 + 2) > 0.5 ? 1 : 0);
-    const rustle = noise * 0.03 * (0.5 + 0.5 * Math.sin(t * 3));
-    data[i] = wind + bird1 + bird2 + rustle;
-  }
-  return buffer;
-}
-
-interface SoundState {
-  isPlaying: boolean;
-  volume: number;
 }
 
 export default function AmbientSounds() {
-  const [sounds, setSounds] = useState<Record<SoundType, SoundState>>({
-    whiteNoise: { isPlaying: false, volume: 0.5 },
-    rain: { isPlaying: false, volume: 0.5 },
-    forest: { isPlaying: false, volume: 0.5 },
+  const [sounds, setSounds] = useState<Record<SoundType, { playing: boolean; volume: number }>>({
+    whiteNoise: { playing: false, volume: 0.5 },
+    rain: { playing: false, volume: 0.5 },
+    forest: { playing: false, volume: 0.5 },
   });
-
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const sourcesRef = useRef<Record<SoundType, { source: AudioBufferSourceNode; gain: GainNode } | null>>({
+  
+  const refs = useRef<Record<SoundType, { source: AudioBufferSourceNode; gain: GainNode } | null>>({
     whiteNoise: null,
     rain: null,
     forest: null,
   });
+  
+  const ctxRef = useRef<AudioContext | null>(null);
 
-  const getAudioContext = useCallback(() => {
-    if (!audioCtxRef.current) {
-      audioCtxRef.current = new AudioContext();
+  const getCtx = useCallback(() => {
+    if (!ctxRef.current) {
+      ctxRef.current = new AudioContext();
     }
-    if (audioCtxRef.current.state === "suspended") {
-      audioCtxRef.current.resume();
+    if (ctxRef.current.state === "suspended") {
+      ctxRef.current.resume();
     }
-    return audioCtxRef.current;
-  }, []);
-
-  const playSound = useCallback((type: SoundType) => {
-    const ctx = getAudioContext();
-    const existing = sourcesRef.current[type];
-    if (existing) return;
-
-    let buffer: AudioBuffer;
-    switch (type) {
-      case "whiteNoise":
-        buffer = createWhiteNoiseBuffer(ctx);
-        break;
-      case "rain":
-        buffer = createRainBuffer(ctx);
-        break;
-      case "forest":
-        buffer = createForestBuffer(ctx);
-        break;
-    }
-
-    const source = ctx.createBufferSource();
-    source.buffer = buffer;
-    source.loop = true;
-
-    const gainNode = ctx.createGain();
-    gainNode.gain.value = sounds[type].volume;
-
-    if (type === "rain") {
-      const filter = ctx.createBiquadFilter();
-      filter.type = "lowpass";
-      filter.frequency.value = 800;
-      source.connect(filter);
-      filter.connect(gainNode);
-    } else if (type === "forest") {
-      const filter = ctx.createBiquadFilter();
-      filter.type = "bandpass";
-      filter.frequency.value = 2000;
-      filter.Q.value = 0.5;
-      source.connect(filter);
-      filter.connect(gainNode);
-    } else {
-      source.connect(gainNode);
-    }
-
-    gainNode.connect(ctx.destination);
-    source.start();
-
-    sourcesRef.current[type] = { source, gain: gainNode };
-    setSounds((prev) => ({ ...prev, [type]: { ...prev[type], isPlaying: true } }));
-  }, [getAudioContext, sounds]);
-
-  const stopSound = useCallback((type: SoundType) => {
-    const existing = sourcesRef.current[type];
-    if (!existing) return;
-
-    existing.source.stop();
-    existing.source.disconnect();
-    existing.gain.disconnect();
-    sourcesRef.current[type] = null;
-    setSounds((prev) => ({ ...prev, [type]: { ...prev[type], isPlaying: false } }));
+    return ctxRef.current;
   }, []);
 
   const toggleSound = useCallback((type: SoundType) => {
-    if (sounds[type].isPlaying) {
-      stopSound(type);
+    const state = sounds[type];
+    const ctx = getCtx();
+    
+    if (state.playing && refs.current[type]) {
+      refs.current[type]!.source.stop();
+      refs.current[type] = null;
+      setSounds(prev => ({ ...prev, [type]: { ...prev[type], playing: false } }));
     } else {
-      playSound(type);
+      const buffer = createNoiseBuffer(ctx, type);
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.loop = true;
+      
+      const gain = ctx.createGain();
+      gain.gain.value = state.volume;
+      
+      source.connect(gain);
+      gain.connect(ctx.destination);
+      source.start();
+      
+      refs.current[type] = { source, gain };
+      setSounds(prev => ({ ...prev, [type]: { ...prev[type], playing: true } }));
     }
-  }, [sounds, playSound, stopSound]);
+  }, [sounds, getCtx]);
 
-  const updateVolume = useCallback((type: SoundType, volume: number) => {
-    const existing = sourcesRef.current[type];
-    if (existing) {
-      existing.gain.gain.value = volume;
+  const updateVolume = useCallback((type: SoundType, vol: number) => {
+    if (refs.current[type]) {
+      refs.current[type]!.gain.gain.value = vol;
     }
-    setSounds((prev) => ({ ...prev, [type]: { ...prev[type], volume } }));
+    setSounds(prev => ({ ...prev, [type]: { ...prev[type], volume: vol } }));
   }, []);
 
   useEffect(() => {
     return () => {
-      Object.values(sourcesRef.current).forEach((s) => {
-        if (s) {
-          s.source.stop();
-          s.source.disconnect();
-          s.gain.disconnect();
-        }
+      Object.values(refs.current).forEach(s => {
+        if (s) { s.source.stop(); s.source.disconnect(); s.gain.disconnect(); }
       });
-      audioCtxRef.current?.close();
     };
   }, []);
 
+  const accent = "var(--theme-accent)";
+  const text = "var(--theme-text)";
+  const secondary = "var(--theme-secondary)";
+  const border = "var(--theme-border)";
+
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-zinc-800 bg-zinc-900/50 p-4 sm:p-6">
-      <h2 className="text-sm font-semibold text-zinc-500 uppercase tracking-wider">Ambient Sesler</h2>
-
-      <div className="flex flex-col gap-2 sm:gap-3">
-        {SOUNDS.map((sound) => {
-          const state = sounds[sound.id];
-          return (
-            <div key={sound.id} className="flex items-center gap-2 sm:gap-4">
-              <button
-                onClick={() => toggleSound(sound.id)}
-                className={`flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-full transition-colors ${
-                  state.isPlaying
-                    ? "bg-zinc-100 text-zinc-900 hover:bg-white"
-                    : "border border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200"
-                }`}
-                aria-label={`${state.isPlaying ? "Duraklat" : "Oynat"} ${sound.label}`}
-              >
-                {state.isPlaying ? (
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                    <rect x="6" y="4" width="4" height="16" rx="1" />
-                    <rect x="14" y="4" width="4" height="16" rx="1" />
-                  </svg>
-                ) : (
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M8 5.14v14l11-7-11-7z" />
-                  </svg>
-                )}
-              </button>
-
-              <span className={`w-16 sm:w-24 shrink-0 text-xs sm:text-sm font-medium transition-colors ${state.isPlaying ? "text-zinc-100" : "text-zinc-500"}`}>
-                {sound.label}
-              </span>
-
-              <div className="flex flex-1 items-center gap-2 sm:gap-3">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0 text-zinc-600">
-                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-                  {state.volume > 0.3 && <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />}
-                  {state.volume > 0.6 && <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />}
+    <div className="flex flex-col gap-4 w-full px-4">
+      <h2 className="text-lg font-semibold" style={{ color: text }}>Ambient Sesler</h2>
+      
+      {SOUNDS.map((sound) => {
+        const state = sounds[sound.id];
+        return (
+          <div
+            key={sound.id}
+            className="flex items-center gap-4 rounded-xl p-4"
+            style={{ backgroundColor: secondary, border: `1px solid ${border}` }}
+          >
+            <button
+              onClick={() => toggleSound(sound.id)}
+              className="w-12 h-12 rounded-full flex items-center justify-center min-h-44 min-w-44"
+              style={{
+                backgroundColor: state.playing ? accent : "transparent",
+                border: `2px solid ${accent}`,
+                color: state.playing ? "#fff" : accent,
+              }}
+            >
+              {state.playing ? (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                  <rect x="6" y="4" width="4" height="16" rx="1" />
+                  <rect x="14" y="4" width="4" height="16" rx="1" />
                 </svg>
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.01"
-                  value={state.volume}
-                  onChange={(e) => updateVolume(sound.id, parseFloat(e.target.value))}
-                  className="flex-1 accent-zinc-400"
-                  aria-label={`${sound.label} volume`}
-                />
-              </div>
+              ) : (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M8 5.14v14l11-7-11-7z" />
+                </svg>
+              )}
+            </button>
+            
+            <div className="flex-1">
+              <div className="text-sm font-medium mb-2" style={{ color: text }}>{sound.label}</div>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={state.volume}
+                onChange={(e) => updateVolume(sound.id, parseFloat(e.target.value))}
+                className="w-full accent"
+                style={{ accentColor: accent }}
+              />
             </div>
-          );
-        })}
-      </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
