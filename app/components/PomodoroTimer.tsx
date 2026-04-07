@@ -72,7 +72,7 @@ export default function PomodoroTimer() {
   const strokeDashoffset = circumference * (1 - progress);
 
   return (
-    <div className="flex flex-col items-center gap-8">
+    <div className="flex flex-col items-center gap-4 sm:gap-6 md:gap-8">
       <div className="flex gap-2">
         <span
           className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
@@ -81,7 +81,7 @@ export default function PomodoroTimer() {
               : "text-zinc-500"
           }`}
         >
-          Work
+          Çalışma
         </span>
         <span
           className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
@@ -95,7 +95,7 @@ export default function PomodoroTimer() {
       </div>
 
       <div className="relative flex items-center justify-center">
-        <svg width="280" height="280" className="-rotate-90">
+        <svg width="200" height="200" className="-rotate-90 sm:w-[240px] sm:h-[240px] md:w-[280px] md:h-[280px]">
           <circle
             cx="140"
             cy="140"
@@ -135,17 +135,15 @@ export default function PomodoroTimer() {
               : "bg-zinc-100 text-zinc-900 hover:bg-white"
           }`}
         >
-          {isRunning ? "Pause" : "Start"}
+          {isRunning ? "Duraklat" : "Başlat"}
         </button>
         <button
           onClick={resetTimer}
           className="rounded-full border border-zinc-700 px-8 py-3 text-sm font-semibold text-zinc-400 transition-colors hover:border-zinc-500 hover:text-zinc-200"
         >
-          Reset
+          Sıfırla
         </button>
       </div>
     </div>
   );
-} );
-}
 }
