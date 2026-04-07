@@ -8,7 +8,7 @@ export default function Home() {
     <div className="flex flex-col flex-1 items-center justify-center bg-zinc-950 font-sans">
       <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-center px-16">
         <h1 className="text-2xl font-semibold tracking-tight text-zinc-100 mb-8">
-          Pomodoro Timer
+          Pomodoro Sayacı
         </h1>
         <PomodoroTimer />
         

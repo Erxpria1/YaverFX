@@ -90,7 +90,7 @@ export default function PomodoroTimer() {
               : "text-zinc-500"
           }`}
         >
-          Break
+          Mola
         </span>
       </div>
 
@@ -146,4 +146,6 @@ export default function PomodoroTimer() {
       </div>
     </div>
   );
+} );
+}
 }
