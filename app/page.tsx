@@ -18,12 +18,28 @@ const TABS = [
   { id: "rewards", icon: "🏆", label: "Ödül" },
 ] as const;
 
+interface Stats { focusTime: number; tasksDone: number; streak: number; points: number; }
+const EMPTY_STATS = { focusTime: 0, tasksDone: 0, streak: 0, points: 0 };
+
 export default function Home() {
   const [page, setPage] = useState<Page>("home");
+  const [stats, setStats] = useState<Stats>(EMPTY_STATS);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("yaverfx-stats");
+    if (stored) setStats({ ...EMPTY_STATS, ...JSON.parse(stored) });
+    
+    const handleUpdate = () => {
+      const s = localStorage.getItem("yaverfx-stats");
+      if (s) setStats({ ...EMPTY_STATS, ...JSON.parse(s) });
+    };
+    window.addEventListener("yaverfx-stats-update", handleUpdate);
+    return () => window.removeEventListener("yaverfx-stats-update", handleUpdate);
+  }, []);
 
   const renderPage = () => {
     switch (page) {
-      case "home": return <HomeContent />;
+      case "home": return <HomeContent stats={stats} />;
       case "tasks": return <TaskList />;
       case "sounds": return <AmbientSounds />;
       case "blocker": return <SiteBlocker />;
@@ -56,34 +72,21 @@ export default function Home() {
   );
 }
 
-function HomeContent() {
+function HomeContent({ stats }: { stats: Stats }) {
   return (
     <div>
-      {/* Timer */}
-      <div className="timer-card">
-        <div className="timer-display">25:00</div>
-        <div className="timer-status">Hazır</div>
-        <div className="timer-actions">
-          <button className="timer-btn start">▶ Başlat</button>
-          <button className="timer-btn reset">↺ Sıfırla</button>
-        </div>
-      </div>
-
-      {/* Stats */}
+      <PomodoroTimer />
+      
       <div className="stats-grid">
-        <div className="stat-box"><div className="stat-num">0</div><div className="stat-lbl">Dakika</div></div>
-        <div className="stat-box"><div className="stat-num">0</div><div className="stat-lbl">Görev</div></div>
-        <div className="stat-box"><div className="stat-num">0</div><div className="stat-lbl">Gün</div></div>
-        <div className="stat-box"><div className="stat-num">0</div><div className="stat-lbl">Puan</div></div>
+        <div className="stat-box"><div className="stat-num">{Math.floor(stats.focusTime)}</div><div className="stat-lbl">Dakika</div></div>
+        <div className="stat-box"><div className="stat-num">{stats.tasksDone}</div><div className="stat-lbl">Görev</div></div>
+        <div className="stat-box"><div className="stat-num">{stats.streak}</div><div className="stat-lbl">Gün</div></div>
+        <div className="stat-box"><div className="stat-num">{stats.points}</div><div className="stat-lbl">Puan</div></div>
       </div>
 
-      {/* Quick Task */}
       <div className="sect">
         <div className="sect-head"><span className="sect-title">Görevler</span></div>
-        <div className="task-add-box">
-          <input className="task-add-input" placeholder="Yeni görev ekle..." />
-          <button className="task-add-btn">+</button>
-        </div>
+        <TaskList />
       </div>
     </div>
   );
