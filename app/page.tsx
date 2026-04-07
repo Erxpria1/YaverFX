@@ -87,12 +87,12 @@ export default function Home() {
   
   return (
     <div 
-      className="h-safe w-full flex flex-col"
+      className="h-screen w-full flex flex-col"
       style={{ backgroundColor: "var(--theme-bg)" }}
     >
       {/* Header */}
       <header 
-        className="flex items-center justify-between px-4 pt-safe"
+        className="flex items-center justify-between px-4 pt-4"
         style={{ backgroundColor: "var(--theme-bg)" }}
       >
         <h1 className="text-lg font-semibold" style={{ color: "var(--theme-text)" }}>
@@ -108,7 +108,7 @@ export default function Home() {
       
       {/* Bottom Navigation */}
       <nav 
-        className="flex justify-around items-center px-2 pb-safe"
+        className="flex justify-around items-center px-2 pb-4"
         style={{ 
           backgroundColor: "var(--theme-secondary)",
           borderTop: "1px solid var(--theme-border)",
