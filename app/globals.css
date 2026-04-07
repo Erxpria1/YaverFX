@@ -25,9 +25,25 @@
 html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: -apple-system, SF Pro Display, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
 
 /* App Container */
-.app { height: 100dvh; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
+.app { 
+  height: 100dvh; 
+  height: -webkit-fill-available;
+  height: 100vh;
+  display: flex; 
+  flex-direction: column; 
+  overflow: hidden; 
+  background: var(--bg); 
+  overscroll-behavior: none;
+}
+
 .app.focus .tabbar { opacity: 0.3; }
 .app.focus .tabbar:hover { opacity: 1; }
+
+/* Safe Area for iOS */
+@supports (padding-top: env(safe-area-inset-top)) {
+  .app { padding-top: env(safe-area-inset-top); }
+  .header { padding-top: max(12px, env(safe-area-inset-top)); }
+}
 
 /* Focus Bar */
 .focus-bar { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; background: var(--accent); color: #fff; font-weight: 600; font-size: 14px; }
