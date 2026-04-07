@@ -203,22 +203,16 @@ export default function PomodoroTimer() {
       </div>
 
       {/* Timer Ring */}
-      <div className="relative flex items-center justify-center">
-        {/* Glow effect */}
-        <div
-          className="absolute inset-0 rounded-full blur-3xl transition-all duration-1000"
-          style={{
-            backgroundColor: accentColor,
-            opacity: isRunning ? 0.3 : 0.1,
-            transform: isRunning ? "scale(1)" : "scale(0.9)",
-          }}
-        />
-
+      <div 
+        className="relative flex items-center justify-center"
+        style={{ width: svgSize, height: svgSize }}
+      >
+        {/* SVG Ring */}
         <svg 
           width={svgSize} 
           height={svgSize} 
           viewBox={`0 0 ${svgSize} ${svgSize}`}
-          className="relative z-10 -rotate-90"
+          className="absolute -rotate-90"
         >
           <defs>
             <linearGradient id="timerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -251,28 +245,21 @@ export default function PomodoroTimer() {
               strokeDasharray: circumference,
               strokeDashoffset,
               transition: "stroke-dashoffset 0.2s linear",
-              filter: `drop-shadow(0 0 8px ${accentColor})`,
             }}
           />
         </svg>
 
         {/* Center Display */}
-        <div className="absolute z-20 flex flex-col items-center">
+        <div className="flex flex-col items-center">
           <span 
             className="text-4xl sm:text-5xl md:text-6xl font-mono font-bold tracking-wider"
-            style={{ 
-              color: textColor,
-              textShadow: isRunning ? `0 0 20px ${accentColor}` : "none",
-            }}
+            style={{ color: textColor }}
           >
             {display}
           </span>
           <span 
             className="mt-1 text-xs font-medium uppercase tracking-widest"
-            style={{ 
-              color: accentColor,
-              opacity: 0.8,
-            }}
+            style={{ color: accentColor }}
           >
             {mode === "work" ? "odak" : "mola"}
           </span>
