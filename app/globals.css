@@ -3,6 +3,52 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  
+  /* Theme variables - defaults (modern) */
+  --theme-bg: #09090b;
+  --theme-text: #fafafa;
+  --theme-accent: #f43f5e;
+  --theme-secondary: #27272a;
+}
+
+/* Theme: Modern */
+[data-theme="modern"] {
+  --theme-bg: #09090b;
+  --theme-text: #fafafa;
+  --theme-accent: #f43f5e;
+  --theme-secondary: #27272a;
+}
+
+/* Theme: Cyber */
+[data-theme="cyber"] {
+  --theme-bg: #0a0a1a;
+  --theme-text: #e0f7fa;
+  --theme-accent: #00fff0;
+  --theme-secondary: #1a0a2e;
+}
+
+/* Theme: Hacker */
+[data-theme="hacker"] {
+  --theme-bg: #000000;
+  --theme-text: #00ff00;
+  --theme-accent: #00ff00;
+  --theme-secondary: #0d1a0d;
+}
+
+/* Theme: Game */
+[data-theme="game"] {
+  --theme-bg: #1a1a2e;
+  --theme-text: #ffffff;
+  --theme-accent: #ff6b35;
+  --theme-secondary: #16213e;
+}
+
+/* Theme: Minimal */
+[data-theme="minimal"] {
+  --theme-bg: #ffffff;
+  --theme-text: #1a1a1a;
+  --theme-accent: #2563eb;
+  --theme-secondary: #f3f4f6;
 }
 
 @theme inline {

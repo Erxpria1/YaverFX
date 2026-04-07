@@ -17,15 +17,11 @@ export const metadata: Metadata = {
   description: "DHBB/ADD odak uygulaması - Pomodoro, görevler, ambient sesler",
   icons: {
     icon: "/yaverfx.ico",
-    apple: "/apple-icon.png",
   },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
     title: "YaverFX",
-  },
-  formatDetection: {
-    telephone: false,
   },
 };
 
@@ -43,11 +39,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="tr"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col bg-zinc-950">{children}</body>
+    <html lang="tr" data-theme="modern" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
+      <body className="min-h-full flex flex-col bg-[var(--theme-bg)] text-[var(--theme-text)]">{children}</body>
     </html>
   );
 }
