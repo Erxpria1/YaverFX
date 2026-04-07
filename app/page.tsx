@@ -96,8 +96,24 @@ export function getStats(): Stats {
 }
 
 export default function Home() {
-  const [currentPage, setCurrentPage] = useState<Page>("timer");
+  // Persist active page in localStorage
+  const [currentPage, setCurrentPage] = useState<Page>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("yaverfx-page");
+      if (saved && ["timer", "tasks", "sounds", "blocker", "rewards"].includes(saved)) {
+        return saved as Page;
+      }
+    }
+    return "timer";
+  });
+  
   const [stats, setStats] = useState<Stats>(DEFAULT_STATS);
+
+  // Save page to localStorage when changed
+  const handlePageChange = (page: Page) => {
+    setCurrentPage(page);
+    localStorage.setItem("yaverfx-page", page);
+  };
 
   useEffect(() => {
     setStats(getStats());
@@ -159,7 +175,7 @@ export default function Home() {
         {NAV_ITEMS.map((item) => (
           <button
             key={item.id}
-            onClick={() => setCurrentPage(item.id as Page)}
+            onClick={() => handlePageChange(item.id as Page)}
             className={`nav-btn ${currentPage === item.id ? "active" : ""}`}
           >
             <span className="nav-icon">{item.icon}</span>
