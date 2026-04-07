@@ -52,47 +52,43 @@ export default function RewardSystem() {
   }, [data]);
 
   const progress = (data.points % POINTS_PER_LEVEL) / POINTS_PER_LEVEL * 100;
-  const accent = "var(--theme-accent)";
-  const text = "var(--theme-text)";
-  const secondary = "var(--theme-secondary)";
-  const border = "var(--theme-border)";
 
   return (
-    <div className="flex flex-col gap-4 w-full px-4">
-      <h2 className="text-lg font-semibold" style={{ color: text }}>Ödüller</h2>
+    <div className="rewards-wrapper">
+      <h2 className="section-title">Ödüller</h2>
       
-      <div className="rounded-xl p-4" style={{ backgroundColor: secondary, border: `1px solid ${border}` }}>
-        <div className="flex justify-between items-center mb-4">
-          <div>
-            <div className="text-2xl font-bold" style={{ color: text }}>Seviye {data.level}</div>
-            <div className="text-sm" style={{ color: text, opacity: 0.6 }}>{POINTS_PER_LEVEL - (data.points % POINTS_PER_LEVEL)} puan sonraki seviye</div>
+      <div className="reward-card">
+        <div className="reward-header">
+          <div className="reward-level">
+            <span className="reward-level-title">Seviye {data.level}</span>
+            <span className="reward-level-sub">{POINTS_PER_LEVEL - (data.points % POINTS_PER_LEVEL)} puan sonraki seviye</span>
           </div>
-          <div className="text-right">
-            <div className="text-xl font-bold" style={{ color: accent }}>⭐ {data.points}</div>
-            <div className="text-sm" style={{ color: text, opacity: 0.6 }}>{data.totalSessions} seans</div>
+          <div className="reward-points">
+            <span className="reward-points-value">{data.points}</span>
+            <span className="reward-points-sub">{data.totalSessions} seans</span>
           </div>
         </div>
         
-        <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: border }}>
-          <div className="h-full rounded-full" style={{ width: `${progress}%`, backgroundColor: accent }} />
+        <div className="reward-progress">
+          <div className="reward-progress-fill" style={{ width: `${progress}%` }} />
         </div>
       </div>
 
-      <div className="flex justify-center gap-8 py-2">
-        <div className="flex flex-col items-center">
-          <span className="text-2xl">🔥</span>
-          <span className="text-sm font-bold" style={{ color: text }}>{data.streak}</span>
-          <span className="text-xs" style={{ color: text, opacity: 0.6 }}>gün</span>
+      <div className="reward-stats">
+        <div className="reward-stat">
+          <span className="reward-stat-icon">🔥</span>
+          <span className="reward-stat-value">{data.streak}</span>
+          <span className="reward-stat-label">gün</span>
         </div>
-        <div className="flex flex-col items-center">
-          <span className="text-2xl">⭐</span>
-          <span className="text-sm font-bold" style={{ color: text }}>{data.points}</span>
-          <span className="text-xs" style={{ color: text, opacity: 0.6 }}>puan</span>
+        <div className="reward-stat">
+          <span className="reward-stat-icon">⭐</span>
+          <span className="reward-stat-value">{data.points}</span>
+          <span className="reward-stat-label">puan</span>
         </div>
-        <div className="flex flex-col items-center">
-          <span className="text-2xl">🎯</span>
-          <span className="text-sm font-bold" style={{ color: text }}>{data.totalSessions}</span>
-          <span className="text-xs" style={{ color: text, opacity: 0.6 }}>seans</span>
+        <div className="reward-stat">
+          <span className="reward-stat-icon">🎯</span>
+          <span className="reward-stat-value">{data.totalSessions}</span>
+          <span className="reward-stat-label">seans</span>
         </div>
       </div>
     </div>

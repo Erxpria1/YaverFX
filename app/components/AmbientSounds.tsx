@@ -4,10 +4,10 @@ import { useState, useRef, useEffect, useCallback } from "react";
 
 type SoundType = "whiteNoise" | "rain" | "forest";
 
-const SOUNDS: { id: SoundType; label: string }[] = [
-  { id: "whiteNoise", label: "Beyaz Gürültü" },
-  { id: "rain", label: "Yağmur" },
-  { id: "forest", label: "Orman" },
+const SOUNDS: { id: SoundType; label: string; icon: string }[] = [
+  { id: "whiteNoise", label: "Beyaz Gürültü", icon: "🌊" },
+  { id: "rain", label: "Yağmur", icon: "🌧️" },
+  { id: "forest", label: "Orman", icon: "🌲" },
 ];
 
 function createNoiseBuffer(ctx: AudioContext, type: SoundType) {
@@ -54,12 +54,10 @@ export default function AmbientSounds() {
     return ctxRef.current;
   }, []);
 
-  // iOS Safari: Her ses açma/kapama işleminde user gesture'dan sonra ctx'i resume et
   const toggleSound = useCallback((type: SoundType) => {
     const state = sounds[type];
     const ctx = getCtx();
     
-    // iOS Safari: suspended → resume (user gesture ile tetiklenir)
     if (ctx.state === "suspended") {
       ctx.resume().catch(() => {});
     }
@@ -101,46 +99,26 @@ export default function AmbientSounds() {
     };
   }, []);
 
-  const accent = "var(--theme-accent)";
-  const text = "var(--theme-text)";
-  const secondary = "var(--theme-secondary)";
-  const border = "var(--theme-border)";
-
   return (
-    <div className="flex flex-col gap-4 w-full px-4">
-      <h2 className="text-lg font-semibold" style={{ color: text }}>Ambient Sesler</h2>
+    <div className="sounds-wrapper">
+      <h2 className="section-title">Ambient Sesler</h2>
       
       {SOUNDS.map((sound) => {
         const state = sounds[sound.id];
         return (
-          <div
-            key={sound.id}
-            className="flex items-center gap-4 rounded-xl p-4"
-            style={{ backgroundColor: secondary, border: `1px solid ${border}` }}
-          >
+          <div key={sound.id} className="sound-card">
             <button
               onClick={() => toggleSound(sound.id)}
-              className="w-12 h-12 rounded-full flex items-center justify-center min-h-44 min-w-44"
-              style={{
-                backgroundColor: state.playing ? accent : "transparent",
-                border: `2px solid ${accent}`,
-                color: state.playing ? "#fff" : accent,
-              }}
+              className={`sound-toggle ${state.playing ? "active" : ""}`}
             >
-              {state.playing ? (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                  <rect x="6" y="4" width="4" height="16" rx="1" />
-                  <rect x="14" y="4" width="4" height="16" rx="1" />
-                </svg>
-              ) : (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M8 5.14v14l11-7-11-7z" />
-                </svg>
-              )}
+              <span className="sound-icon">{state.playing ? "⏸️" : "▶️"}</span>
             </button>
             
-            <div className="flex-1">
-              <div className="text-sm font-medium mb-2" style={{ color: text }}>{sound.label}</div>
+            <div className="sound-info">
+              <div className="sound-label">
+                <span className="sound-emoji">{sound.icon}</span>
+                {sound.label}
+              </div>
               <input
                 type="range"
                 min="0"
@@ -148,8 +126,7 @@ export default function AmbientSounds() {
                 step="0.01"
                 value={state.volume}
                 onChange={(e) => updateVolume(sound.id, parseFloat(e.target.value))}
-                className="w-full accent"
-                style={{ accentColor: accent }}
+                className="sound-slider"
               />
             </div>
           </div>

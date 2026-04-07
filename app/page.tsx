@@ -6,6 +6,7 @@ import TaskList from "./components/TaskList";
 import AmbientSounds from "./components/AmbientSounds";
 import SiteBlocker from "./components/SiteBlocker";
 import RewardSystem from "./components/RewardSystem";
+import ThemeSelector from "./components/ThemeSelector";
 
 type Page = "timer" | "tasks" | "sounds" | "blocker" | "rewards";
 
@@ -155,6 +156,7 @@ export default function Home() {
 
       <header className="app-header">
         <h1>YaverFX</h1>
+        <ThemeSelector />
       </header>
 
       <div className="trending-bar">
