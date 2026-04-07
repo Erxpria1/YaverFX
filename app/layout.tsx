@@ -16,7 +16,8 @@ export const metadata: Metadata = {
   title: "YaverFX | Odak Uygulaması",
   description: "DHBB/ADD odak uygulaması - Pomodoro, görevler, ambient sesler",
   icons: {
-    icon: "/yaverfx.ico",
+    icon: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
   },
   appleWebApp: {
     capable: true,
