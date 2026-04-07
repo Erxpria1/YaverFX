@@ -1,3 +1,5 @@
+"use client";
+
 import { useState } from "react";
 import PomodoroTimer from "./components/PomodoroTimer";
 import TaskList from "./components/TaskList";
@@ -62,8 +64,6 @@ const NAV_ITEMS: { id: Page; label: string; icon: React.ReactNode }[] = [
 ];
 
 export default function Home() {
-  "use client";
-  
   const [currentPage, setCurrentPage] = useState<Page>("timer");
   
   const renderPage = () => {

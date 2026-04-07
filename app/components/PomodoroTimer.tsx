@@ -45,6 +45,19 @@ function sendBrowserNotification(mode: Mode) {
 }
 
 export default function PomodoroTimer() {
+  const [dimensions, setDimensions] = useState({ width: 280, height: 280 });
+
+  useEffect(() => {
+    const update = () => {
+      const w = Math.min(window.innerWidth * 0.75, 280);
+      setDimensions({ width: w, height: w });
+    };
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
+
+  const { width: size } = dimensions;
   const [mode, setMode] = useState<Mode>("work");
   const [timeLeft, setTimeLeft] = useState(WORK_DURATION);
   const [isRunning, setIsRunning] = useState(false);
@@ -137,7 +150,6 @@ export default function PomodoroTimer() {
   const seconds = timeLeft % 60;
   const display = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
   
-  const size = Math.min(window.innerWidth * 0.75, 280);
   const stroke = Math.max(size / 30, 8);
   const radius = (size / 2) - stroke;
   const circumference = 2 * Math.PI * radius;
