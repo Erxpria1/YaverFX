@@ -20,6 +20,8 @@ export const viewport: Viewport = {
   themeColor: "#000000",
 };
 
+import { TimerProvider } from "./context/TimerContext";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -34,7 +36,9 @@ export default function RootLayout({
         <meta name="format-detection" content="telephone=no" />
       </head>
       <body className="antialiased">
-        {children}
+        <TimerProvider>
+          {children}
+        </TimerProvider>
       </body>
     </html>
   );

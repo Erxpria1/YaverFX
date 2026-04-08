@@ -12,6 +12,12 @@
 
 # testing
 /coverage
+/test
+/tests
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
 
 # next.js
 /.next/
@@ -23,6 +29,8 @@
 # misc
 .DS_Store
 *.pem
+*.log
+lt.log
 
 # debug
 npm-debug.log*
@@ -39,3 +47,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# agents/claud-specific remnants
+CLAUDE.md
+AGENTS.md
+GEMINI.md
