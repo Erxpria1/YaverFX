@@ -53,7 +53,7 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
 
   // Initial load from localStorage
   useEffect(() => {
-     
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     const loadState = () => {
       const saved = localStorage.getItem("yaverfx-timer");
       if (saved) {
@@ -76,7 +76,7 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
       setMounted(true);
     };
     loadState();
-     
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const updateStats = useCallback((updates: Partial<Stats>) => {
@@ -96,82 +96,63 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
   }, [state, mounted]);
 
   // Wake Lock & Keep Alive Logic
-  const requestWakeLock = useCallback(async () => {
+  const enableKeepAlive = useCallback(async () => {
     if (typeof window === "undefined") return;
-    if ("wakeLock" in navigator && !wakeLock.current) {
+
+    // 1. Try Native Wake Lock API
+    if ("wakeLock" in navigator) {
       try {
-        wakeLock.current = await navigator.wakeLock.request("screen");
-      } catch {
-        // Fallback for iOS Safari
-        if (!videoRef.current) {
-          const video = document.createElement("video");
-          video.setAttribute("playsinline", "");
-          video.setAttribute("muted", "");
-          video.setAttribute("loop", "");
-          video.autoplay = true;
-          video.style.cssText = "position:fixed;left:-1px;top:-1px;width:1px;height:1px;opacity:0.01;pointer-events:none;z-index:-1";
-          video.src = "data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28ybXA0MQAAAAhm";
-          videoRef.current = video;
-          document.body.appendChild(video);
-          await video.play().catch(() => {});
+        if (!wakeLock.current) {
+          wakeLock.current = await navigator.wakeLock.request("screen");
         }
+      } catch (err) {
+        console.warn("Wake Lock failed", err);
       }
-    } else if (!videoRef.current) {
-      // Fallback for environments without wakeLock support
+    }
+
+    // 2. Video Fallback (Crucial for iOS PWA)
+    // Needs user gesture to play, so we call this from onClick
+    if (!videoRef.current) {
       const video = document.createElement("video");
       video.setAttribute("playsinline", "");
       video.setAttribute("muted", "");
       video.setAttribute("loop", "");
-      video.autoplay = true;
+      video.muted = true;
+      video.playsInline = true;
       video.style.cssText = "position:fixed;left:-1px;top:-1px;width:1px;height:1px;opacity:0.01;pointer-events:none;z-index:-1";
       video.src = "data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28ybXA0MQAAAAhm";
       videoRef.current = video;
       document.body.appendChild(video);
-      video.play().catch(() => {});
     }
+    
+    videoRef.current.play().catch(() => {
+      /* Might fail if no user gesture */
+    });
   }, []);
 
-  const releaseWakeLock = useCallback(() => {
+  const disableKeepAlive = useCallback(() => {
     if (wakeLock.current) {
       wakeLock.current.release().catch(() => {});
       wakeLock.current = null;
     }
     if (videoRef.current) {
       videoRef.current.pause();
-      videoRef.current.remove();
-      videoRef.current = null;
     }
   }, []);
 
-  useEffect(() => {
-    if (state.isRunning) {
-      requestWakeLock();
-    } else {
-      releaseWakeLock();
-    }
-  }, [state.isRunning, requestWakeLock, releaseWakeLock]);
-
+  // Lifecycle for wake lock
   useEffect(() => {
     if (!state.isRunning) return;
     const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        requestWakeLock();
-      }
+      if (document.visibilityState === "visible") enableKeepAlive();
     };
-    const handlePageHide = () => releaseWakeLock();
-
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    window.addEventListener("pagehide", handlePageHide);
-
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("pagehide", handlePageHide);
-      releaseWakeLock();
-    };
-  }, [state.isRunning, requestWakeLock, releaseWakeLock]);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [state.isRunning, enableKeepAlive]);
 
   const handleTimerComplete = useCallback(() => {
     playNotificationSound();
+    disableKeepAlive();
     sendBrowserNotification(
       state.mode === "work" ? "Çalışma seansı tamamlandı!" : "Mola süresi bitti!",
       state.mode === "work" ? "Harika iş çıkardın, şimdi biraz dinlenme vakti. 🌿" : "Yeterince dinlendin, şimdi tekrar odaklanma zamanı! 🎯"
@@ -191,7 +172,7 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
       });
       setState(prev => ({ ...prev, sessionTime: 0 }));
     }
-  }, [state.mode, state.sessionTime, updateStats]);
+  }, [state.mode, state.sessionTime, updateStats, disableKeepAlive]);
 
   useEffect(() => {
     if (!state.isRunning || !mounted) return;
@@ -224,14 +205,23 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
   const toggleTimer = () => {
     if (!state.isRunning) {
       requestNotificationPermission();
+      enableKeepAlive(); // Direct user gesture!
       setState(prev => ({ ...prev, isRunning: true, endTime: Date.now() + prev.timeLeft * 1000 }));
     } else {
+      disableKeepAlive();
       setState(prev => ({ ...prev, isRunning: false, endTime: null }));
     }
   };
 
-  const resetTimer = () => setState(DEFAULT_STATE);
-  const setMode = (mode: Mode) => setState({ ...DEFAULT_STATE, mode, timeLeft: mode === "work" ? WORK_DURATION : BREAK_DURATION });
+  const resetTimer = () => {
+    disableKeepAlive();
+    setState(DEFAULT_STATE);
+  };
+
+  const setMode = (mode: Mode) => {
+    disableKeepAlive();
+    setState({ ...DEFAULT_STATE, mode, timeLeft: mode === "work" ? WORK_DURATION : BREAK_DURATION });
+  };
 
   const minutes = Math.floor(state.timeLeft / 60);
   const seconds = state.timeLeft % 60;
