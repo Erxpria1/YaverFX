@@ -4,54 +4,50 @@ import { useState, useEffect } from "react";
 
 type Theme = "modern" | "cyber" | "hacker" | "game" | "minimal";
 
-const THEMES = [
-  { id: "modern" as Theme, name: "Kırmızı", color: "#ff375f" },
-  { id: "cyber" as Theme, name: "Mavi", color: "#64d2ff" },
-  { id: "hacker" as Theme, name: "Yeşil", color: "#30d158" },
-  { id: "game" as Theme, name: "Turuncu", color: "#ff9f0a" },
-  { id: "minimal" as Theme, name: "Bleu", color: "#0a84ff" },
+const THEMES: { id: Theme; name: string; color: string; desc: string }[] = [
+  { id: "modern", name: "Kırmızı", color: "#ff375f", desc: "Klasik Yaver Deneyimi" },
+  { id: "cyber", name: "Mavi", color: "#64d2ff", desc: "Gelecekçi Odak" },
+  { id: "hacker", name: "Yeşil", color: "#30d158", desc: "Terminal Modu" },
+  { id: "game", name: "Turuncu", color: "#ff9f0a", desc: "Oyun Seviyesi" },
+  { id: "minimal", name: "Bleu", color: "#0a84ff", desc: "Sakin ve Yalın" },
 ];
 
 export default function ThemeSelector() {
-  const [theme, setTheme] = useState<Theme>("modern");
-  const [show, setShow] = useState(false);
+  const [currentTheme, setCurrentTheme] = useState<Theme>("modern");
 
   useEffect(() => {
     const t = localStorage.getItem("yaverfx-theme") as Theme;
-    if (t && THEMES.some(x => x.id === t)) setTheme(t);
+    if (t && THEMES.some(x => x.id === t)) {
+      setCurrentTheme(t);
+      document.documentElement.setAttribute("data-theme", t);
+    }
   }, []);
 
-  const apply = (t: Theme) => {
-    setTheme(t);
+  const applyTheme = (t: Theme) => {
+    setCurrentTheme(t);
     document.documentElement.setAttribute("data-theme", t);
     localStorage.setItem("yaverfx-theme", t);
-    setShow(false);
   };
 
-  const current = THEMES.find(t => t.id === theme);
-
   return (
-    <>
-      <button className="theme-btn" onClick={() => setShow(true)}>
-        <span className="theme-dot" style={{ background: current?.color }} />
-      </button>
-
-      {show && (
-        <div className="theme-sheet" onClick={() => setShow(false)}>
-          <div className="theme-box" onClick={e => e.stopPropagation()}>
-            <div className="theme-handle" />
-            <div className="theme-grid">
-              {THEMES.map(t => (
-                <button key={t.id} className={`theme-opt ${theme === t.id ? "on" : ""}`} onClick={() => apply(t.id)}>
-                  <span className="theme-opt-dot" style={{ background: t.color }} />
-                  <span className="theme-opt-lbl">{t.name}</span>
-                </button>
-              ))}
+    <div className="theme-wrapper">
+      <div className="theme-list">
+        {THEMES.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => applyTheme(t.id)}
+            className={`theme-card ${currentTheme === t.id ? "active" : ""}`}
+          >
+            <div className="theme-preview" style={{ background: t.color }}>
+              {currentTheme === t.id && <span className="theme-check">✓</span>}
             </div>
-            <button className="theme-close" onClick={() => setShow(false)}>Kapat</button>
-          </div>
-        </div>
-      )}
-    </>
+            <div className="theme-info">
+              <span className="theme-name">{t.name}</span>
+              <span className="theme-desc">{t.desc}</span>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }

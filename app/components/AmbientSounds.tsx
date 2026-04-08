@@ -6,24 +6,34 @@ type SoundType = "whiteNoise" | "rain" | "forest";
 
 const SOUNDS: { id: SoundType; label: string; icon: string }[] = [
   { id: "whiteNoise", label: "Beyaz Gürültü", icon: "🌊" },
-  { id: "rain", label: "Yağmur", icon: "🌧️" },
-  { id: "forest", label: "Orman", icon: "🌲" },
+  { id: "rain", label: "Yağmur Sesi", icon: "🌧️" },
+  { id: "forest", label: "Derin Orman", icon: "🌲" },
 ];
 
+// Advanced Audio Generation Algorithms
 function createNoiseBuffer(ctx: AudioContext, type: SoundType) {
   const rate = ctx.sampleRate;
   const length = rate * 2;
   const buffer = ctx.createBuffer(1, length, rate);
   const data = buffer.getChannelData(0);
   
+  let lastOut = 0; // For Pink/Brown noise filtering
+
   for (let i = 0; i < length; i++) {
+    const white = Math.random() * 2 - 1;
+    
     if (type === "whiteNoise") {
-      data[i] = Math.random() * 2 - 1;
+      data[i] = white * 0.15; // Pure white noise
     } else if (type === "rain") {
-      data[i] = (Math.random() * 2 - 1) * 0.4;
+      // Brown/Pink noise hybrid for rain feel
+      lastOut = (lastOut + (0.02 * white)) / 1.02;
+      data[i] = lastOut * 1.5; 
     } else if (type === "forest") {
+      // Very low frequency movement for wind/forest depth
       const t = i / rate;
-      data[i] = Math.sin(t * 0.5) * 0.1 + (Math.random() * 2 - 1) * 0.05;
+      const wind = Math.sin(t * 0.2) * 0.05;
+      lastOut = (lastOut + (0.01 * white)) / 1.01;
+      data[i] = (lastOut + wind) * 0.8;
     }
   }
   return buffer;
@@ -48,9 +58,6 @@ export default function AmbientSounds() {
     if (!ctxRef.current) {
       ctxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
     }
-    if (ctxRef.current.state === "suspended") {
-      ctxRef.current.resume();
-    }
     return ctxRef.current;
   }, []);
 
@@ -63,7 +70,13 @@ export default function AmbientSounds() {
     }
     
     if (state.playing && refs.current[type]) {
-      refs.current[type]!.source.stop();
+      const { source, gain } = refs.current[type]!;
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+      setTimeout(() => {
+        source.stop();
+        source.disconnect();
+        gain.disconnect();
+      }, 500);
       refs.current[type] = null;
       setSounds(prev => ({ ...prev, [type]: { ...prev[type], playing: false } }));
     } else {
@@ -73,11 +86,13 @@ export default function AmbientSounds() {
       source.loop = true;
       
       const gain = ctx.createGain();
-      gain.gain.value = state.volume;
+      gain.gain.value = 0.001;
       
       source.connect(gain);
       gain.connect(ctx.destination);
       source.start();
+      
+      gain.gain.exponentialRampToValueAtTime(state.volume, ctx.currentTime + 0.5);
       
       refs.current[type] = { source, gain };
       setSounds(prev => ({ ...prev, [type]: { ...prev[type], playing: true } }));
@@ -85,11 +100,12 @@ export default function AmbientSounds() {
   }, [sounds, getCtx]);
 
   const updateVolume = useCallback((type: SoundType, vol: number) => {
+    const ctx = getCtx();
     if (refs.current[type]) {
-      refs.current[type]!.gain.gain.value = vol;
+      refs.current[type]!.gain.gain.linearRampToValueAtTime(vol, ctx.currentTime + 0.1);
     }
     setSounds(prev => ({ ...prev, [type]: { ...prev[type], volume: vol } }));
-  }, []);
+  }, [getCtx]);
 
   useEffect(() => {
     return () => {
@@ -100,38 +116,38 @@ export default function AmbientSounds() {
   }, []);
 
   return (
-    <div className="sounds-wrapper">
-      <h2 className="section-title">Ambient Sesler</h2>
-      
-      {SOUNDS.map((sound) => {
-        const state = sounds[sound.id];
-        return (
-          <div key={sound.id} className="sound-card">
-            <button
-              onClick={() => toggleSound(sound.id)}
-              className={`sound-toggle ${state.playing ? "active" : ""}`}
-            >
-              <span className="sound-icon">{state.playing ? "⏸️" : "▶️"}</span>
-            </button>
-            
-            <div className="sound-info">
-              <div className="sound-label">
-                <span className="sound-emoji">{sound.icon}</span>
-                {sound.label}
+    <div className="sounds-wrapper animate-in">
+      <div className="theme-list">
+        {SOUNDS.map((sound) => {
+          const state = sounds[sound.id];
+          return (
+            <div key={sound.id} className={`sound-card ${state.playing ? "active" : ""}`}>
+              <button
+                onClick={() => toggleSound(sound.id)}
+                className={`sound-toggle ${state.playing ? "active" : ""}`}
+              >
+                <span className="sound-icon">{state.playing ? "⏸" : "▶"}</span>
+              </button>
+              
+              <div className="sound-info">
+                <div className="theme-info">
+                  <span className="theme-name">{sound.icon} {sound.label}</span>
+                  <span className="theme-desc">{state.playing ? "Şu an çalıyor..." : "Dinlemek için bas"}</span>
+                </div>
+                <input
+                  type="range"
+                  min="0.001"
+                  max="1"
+                  step="0.01"
+                  value={state.volume}
+                  onChange={(e) => updateVolume(sound.id, parseFloat(e.target.value))}
+                  className="sound-slider"
+                />
               </div>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.01"
-                value={state.volume}
-                onChange={(e) => updateVolume(sound.id, parseFloat(e.target.value))}
-                className="sound-slider"
-              />
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }

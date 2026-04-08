@@ -1,94 +1,64 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 
-interface RewardData {
-  points: number;
-  level: number;
+interface Stats {
+  focusTime: number;
+  tasksDone: number;
   streak: number;
-  lastActiveDate: string;
-  totalSessions: number;
+  points: number;
 }
 
-const POINTS_PER_SESSION = 10;
 const POINTS_PER_LEVEL = 100;
 
 export default function RewardSystem() {
-  const [data, setData] = useState<RewardData>({
-    points: 0, level: 1, streak: 0, lastActiveDate: "", totalSessions: 0
-  });
+  const [stats, setStats] = useState<Stats>({ focusTime: 0, tasksDone: 0, streak: 0, points: 0 });
 
   useEffect(() => {
-    const stored = localStorage.getItem("yaverfx-rewards");
-    if (stored) {
-      try {
-        setData(JSON.parse(stored));
-      } catch {}
-    }
+    const update = () => {
+      const stored = localStorage.getItem("yaverfx-stats");
+      if (stored) setStats(JSON.parse(stored));
+    };
+    update();
+    window.addEventListener("yaverfx-stats-update", update);
+    return () => window.removeEventListener("yaverfx-stats-update", update);
   }, []);
 
-  const addPoints = () => {
-    const today = new Date().toISOString().split("T")[0];
-    const newData = { ...data };
-    newData.points += POINTS_PER_SESSION;
-    newData.totalSessions += 1;
-    newData.level = Math.floor(newData.points / POINTS_PER_LEVEL) + 1;
-    if (newData.lastActiveDate !== today) {
-      if (newData.lastActiveDate) {
-        const diff = (new Date(today).getTime() - new Date(newData.lastActiveDate).getTime()) / (1000 * 60 * 60 * 24);
-        newData.streak = diff === 1 ? newData.streak + 1 : 1;
-      } else {
-        newData.streak = 1;
-      }
-      newData.lastActiveDate = today;
-    }
-    localStorage.setItem("yaverfx-rewards", JSON.stringify(newData));
-    setData(newData);
-  };
-
-  useEffect(() => {
-    (window as any).addYaverFxPoints = addPoints;
-    return () => { delete (window as any).addYaverFxPoints; };
-  }, [data]);
-
-  const progress = (data.points % POINTS_PER_LEVEL) / POINTS_PER_LEVEL * 100;
+  const level = Math.floor(stats.points / POINTS_PER_LEVEL) + 1;
+  const progress = (stats.points % POINTS_PER_LEVEL);
 
   return (
-    <div className="rewards-wrapper">
-      <h2 className="section-title">Ödüller</h2>
+    <div className="reward-box animate-in">
+      <div className="reward-top">
+        <div className="reward-lvl">
+          <span className="reward-val">{level}</span>
+          <span className="reward-lbl">SEVİYE</span>
+        </div>
+        <div className="reward-pts">
+          <span className="reward-val">{stats.points}</span>
+          <span className="reward-lbl">TOPLAM PUAN</span>
+        </div>
+      </div>
       
-      <div className="reward-card">
-        <div className="reward-header">
-          <div className="reward-level">
-            <span className="reward-level-title">Seviye {data.level}</span>
-            <span className="reward-level-sub">{POINTS_PER_LEVEL - (data.points % POINTS_PER_LEVEL)} puan sonraki seviye</span>
-          </div>
-          <div className="reward-points">
-            <span className="reward-points-value">{data.points}</span>
-            <span className="reward-points-sub">{data.totalSessions} seans</span>
-          </div>
-        </div>
-        
-        <div className="reward-progress">
-          <div className="reward-progress-fill" style={{ width: `${progress}%` }} />
-        </div>
+      <div className="reward-bar">
+        <div className="reward-fill" style={{ width: `${progress}%` }}></div>
       </div>
 
       <div className="reward-stats">
         <div className="reward-stat">
-          <span className="reward-stat-icon">🔥</span>
-          <span className="reward-stat-value">{data.streak}</span>
-          <span className="reward-stat-label">gün</span>
+          <span className="reward-icon">🔥</span>
+          <div className="reward-num">{stats.streak}</div>
+          <div className="reward-label">GÜN SERİSİ</div>
         </div>
         <div className="reward-stat">
-          <span className="reward-stat-icon">⭐</span>
-          <span className="reward-stat-value">{data.points}</span>
-          <span className="reward-stat-label">puan</span>
+          <span className="reward-icon">⏱️</span>
+          <div className="reward-num">{Math.floor(stats.focusTime)}</div>
+          <div className="reward-label">DAKİKA ODAK</div>
         </div>
         <div className="reward-stat">
-          <span className="reward-stat-icon">🎯</span>
-          <span className="reward-stat-value">{data.totalSessions}</span>
-          <span className="reward-stat-label">seans</span>
+          <span className="reward-icon">✅</span>
+          <div className="reward-num">{stats.tasksDone}</div>
+          <div className="reward-label">GÖREV BİTTİ</div>
         </div>
       </div>
     </div>

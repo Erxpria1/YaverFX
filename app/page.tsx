@@ -8,14 +8,15 @@ import SiteBlocker from "./components/SiteBlocker";
 import RewardSystem from "./components/RewardSystem";
 import ThemeSelector from "./components/ThemeSelector";
 
-type Page = "home" | "tasks" | "sounds" | "blocker" | "rewards";
+type Page = "home" | "tasks" | "sounds" | "blocker" | "rewards" | "theme";
 
 const MENU_ITEMS = [
   { id: "home", icon: "🏠", label: "Ana Ekran" },
   { id: "tasks", icon: "✅", label: "Görevler" },
   { id: "sounds", icon: "🎵", label: "Odak Sesleri" },
-  { id: "blocker", icon: "🚫", label: "Site Engelleyici" },
+  { id: "blocker", icon: "🚫", label: "Engelleyici" },
   { id: "rewards", icon: "🏆", label: "Başarılar" },
+  { id: "theme", icon: "🎨", label: "Tema Seç" },
 ] as const;
 
 export default function Home() {
@@ -29,6 +30,7 @@ export default function Home() {
       case "sounds": return <div className="page-container animate-in"><h2 className="page-title">Sesler</h2><AmbientSounds /></div>;
       case "blocker": return <div className="page-container animate-in"><h2 className="page-title">Engelleyici</h2><SiteBlocker /></div>;
       case "rewards": return <div className="page-container animate-in"><h2 className="page-title">Ödüller</h2><RewardSystem /></div>;
+      case "theme": return <div className="page-container animate-in"><h2 className="page-title">Görünüm</h2><ThemeSelector /></div>;
     }
   };
 
@@ -39,14 +41,12 @@ export default function Home() {
           <span className="logo-dot"></span>
           <h1>YaverFX</h1>
         </div>
-        <ThemeSelector />
       </header>
 
       <main className="main-stage">
         {renderPage()}
       </main>
 
-      {/* Floating Single Menu Button */}
       <div className={`menu-overlay ${isMenuOpen ? "active" : ""}`} onClick={() => setIsMenuOpen(false)}>
         <div className="menu-content" onClick={e => e.stopPropagation()}>
           <div className="menu-grid">
