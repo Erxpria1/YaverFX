@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import { playNotificationSound } from "../utils/audio";
 import { requestNotificationPermission, sendBrowserNotification } from "../utils/notifications";
 
@@ -48,31 +48,34 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<TimerState>(DEFAULT_STATE);
   const [mounted, setMounted] = useState(false);
 
-  // Initial load from localStorage (Client-side only)
+  const wakeLock = useRef<WakeLockSentinel | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  // Initial load from localStorage
   useEffect(() => {
-    const saved = localStorage.getItem("yaverfx-timer");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (parsed.isRunning && parsed.endTime) {
-          const remaining = Math.max(0, Math.round((parsed.endTime - Date.now()) / 1000));
-          if (remaining > 0) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
-            setState({ ...parsed, timeLeft: remaining });
+     
+    const loadState = () => {
+      const saved = localStorage.getItem("yaverfx-timer");
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (parsed.isRunning && parsed.endTime) {
+            const remaining = Math.max(0, Math.round((parsed.endTime - Date.now()) / 1000));
+            if (remaining > 0) {
+              setState({ ...parsed, timeLeft: remaining });
+            } else {
+              setState(DEFAULT_STATE);
+            }
           } else {
-             
-            setState(DEFAULT_STATE);
+            setState(parsed);
           }
-        } else {
-           
-          setState(parsed);
+        } catch {
+          setState(DEFAULT_STATE);
         }
-      } catch {
-         
-        setState(DEFAULT_STATE);
       }
-    }
-    setMounted(true);
+      setMounted(true);
+    };
+    loadState();
      
   }, []);
 
@@ -91,6 +94,82 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem("yaverfx-timer", JSON.stringify(state));
     }
   }, [state, mounted]);
+
+  // Wake Lock & Keep Alive Logic
+  const requestWakeLock = useCallback(async () => {
+    if (typeof window === "undefined") return;
+    if ("wakeLock" in navigator && !wakeLock.current) {
+      try {
+        // @ts-expect-error - wakeLock API
+        wakeLock.current = await navigator.wakeLock.request("screen");
+      } catch (e) {
+        // Fallback for iOS Safari
+        if (!videoRef.current) {
+          const video = document.createElement("video");
+          video.setAttribute("playsinline", "");
+          video.setAttribute("muted", "");
+          video.setAttribute("loop", "");
+          video.autoplay = true;
+          video.style.cssText = "position:fixed;left:-1px;top:-1px;width:1px;height:1px;opacity:0.01;pointer-events:none;z-index:-1";
+          video.src = "data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28ybXA0MQAAAAhm";
+          videoRef.current = video;
+          document.body.appendChild(video);
+          await video.play().catch(() => {});
+        }
+      }
+    } else if (!videoRef.current) {
+      // Fallback for environments without wakeLock support
+      const video = document.createElement("video");
+      video.setAttribute("playsinline", "");
+      video.setAttribute("muted", "");
+      video.setAttribute("loop", "");
+      video.autoplay = true;
+      video.style.cssText = "position:fixed;left:-1px;top:-1px;width:1px;height:1px;opacity:0.01;pointer-events:none;z-index:-1";
+      video.src = "data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28ybXA0MQAAAAhm";
+      videoRef.current = video;
+      document.body.appendChild(video);
+      video.play().catch(() => {});
+    }
+  }, []);
+
+  const releaseWakeLock = useCallback(() => {
+    if (wakeLock.current) {
+      wakeLock.current.release().catch(() => {});
+      wakeLock.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.remove();
+      videoRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (state.isRunning) {
+      requestWakeLock();
+    } else {
+      releaseWakeLock();
+    }
+  }, [state.isRunning, requestWakeLock, releaseWakeLock]);
+
+  useEffect(() => {
+    if (!state.isRunning) return;
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        requestWakeLock();
+      }
+    };
+    const handlePageHide = () => releaseWakeLock();
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("pagehide", handlePageHide);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("pagehide", handlePageHide);
+      releaseWakeLock();
+    };
+  }, [state.isRunning, requestWakeLock, releaseWakeLock]);
 
   const handleTimerComplete = useCallback(() => {
     playNotificationSound();
