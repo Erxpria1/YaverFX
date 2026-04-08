@@ -100,9 +100,8 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
     if (typeof window === "undefined") return;
     if ("wakeLock" in navigator && !wakeLock.current) {
       try {
-        // @ts-expect-error - wakeLock API
         wakeLock.current = await navigator.wakeLock.request("screen");
-      } catch (e) {
+      } catch {
         // Fallback for iOS Safari
         if (!videoRef.current) {
           const video = document.createElement("video");
