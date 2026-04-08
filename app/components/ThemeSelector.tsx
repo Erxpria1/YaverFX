@@ -18,9 +18,11 @@ export default function ThemeSelector() {
   useEffect(() => {
     const t = localStorage.getItem("yaverfx-theme") as Theme;
     if (t && THEMES.some(x => x.id === t)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCurrentTheme(t);
       document.documentElement.setAttribute("data-theme", t);
     }
+     
   }, []);
 
   const applyTheme = (t: Theme) => {

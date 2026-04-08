@@ -1,7 +1,8 @@
 export function playNotificationSound() {
   if (typeof window === "undefined") return;
   try {
-    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    // @ts-expect-error - webkitAudioContext is non-standard
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
     if (!AudioCtx) return;
     const audioContext = new AudioCtx();
     const playNote = (freq: number, start: number, dur: number) => {

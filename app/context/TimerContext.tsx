@@ -57,18 +57,23 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
         if (parsed.isRunning && parsed.endTime) {
           const remaining = Math.max(0, Math.round((parsed.endTime - Date.now()) / 1000));
           if (remaining > 0) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setState({ ...parsed, timeLeft: remaining });
           } else {
+             
             setState(DEFAULT_STATE);
           }
         } else {
+           
           setState(parsed);
         }
       } catch {
+         
         setState(DEFAULT_STATE);
       }
     }
     setMounted(true);
+     
   }, []);
 
   const updateStats = useCallback((updates: Partial<Stats>) => {

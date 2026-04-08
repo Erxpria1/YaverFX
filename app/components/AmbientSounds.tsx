@@ -56,7 +56,8 @@ export default function AmbientSounds() {
 
   const getCtx = useCallback(() => {
     if (!ctxRef.current) {
-      ctxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      // @ts-expect-error - webkitAudioContext is non-standard
+      ctxRef.current = new (window.AudioContext || window.webkitAudioContext)();
     }
     return ctxRef.current;
   }, []);
@@ -108,8 +109,9 @@ export default function AmbientSounds() {
   }, [getCtx]);
 
   useEffect(() => {
+    const activeRefs = refs.current;
     return () => {
-      Object.values(refs.current).forEach(s => {
+      Object.values(activeRefs).forEach(s => {
         if (s) { s.source.stop(); s.source.disconnect(); s.gain.disconnect(); }
       });
     };

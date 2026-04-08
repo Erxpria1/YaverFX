@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import PomodoroTimer from "./components/PomodoroTimer";
 import TaskList from "./components/TaskList";
 import AmbientSounds from "./components/AmbientSounds";

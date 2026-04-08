@@ -4,12 +4,13 @@ import { useTimer } from "../context/TimerContext";
 import { useEffect, useState } from "react";
 
 export default function PomodoroTimer() {
-  const { mode, isRunning, display, progress, toggleTimer, resetTimer, setMode, sessionTime, mounted } = useTimer();
+  const { mode, isRunning, display, progress, toggleTimer, resetTimer, setMode, mounted } = useTimer();
   const [eyePos, setEyePos] = useState({ x: 0, y: 0 });
 
   // Simple eye tracking animation logic
   useEffect(() => {
     if (!isRunning) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setEyePos({ x: 0, y: 0 });
       return;
     }
@@ -20,6 +21,7 @@ export default function PomodoroTimer() {
       });
     }, 2000);
     return () => clearInterval(interval);
+     
   }, [isRunning]);
 
   if (!mounted) return <div className="timer-stage"><div className="timer-ring-wrapper"></div></div>;
@@ -42,7 +44,7 @@ export default function PomodoroTimer() {
       <div className={`timer-container ${isRunning ? "running" : ""}`}>
         <div className="timer-ring-wrapper">
           <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-            <circle cx={size/2} cy={size/2} r={radius} fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth={stroke} />
+            <circle cx={size/2} cy={size/2} r={radius} fill="none" stroke="var(--track-color)" strokeWidth={stroke} />
             <circle
               className="progress-ring-track"
               cx={size/2}

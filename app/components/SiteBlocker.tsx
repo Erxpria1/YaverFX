@@ -10,8 +10,11 @@ export default function SiteBlocker() {
   useEffect(() => {
     const stored = localStorage.getItem("yaverfx-blocker-sites");
     const storedEnabled = localStorage.getItem("yaverfx-blocker-enabled");
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (stored) setSites(JSON.parse(stored));
+     
     if (storedEnabled) setEnabled(storedEnabled === "true");
+     
   }, []);
 
   const addSite = () => {
