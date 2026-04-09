@@ -1,21 +1,26 @@
 const CACHE_NAME = "yaverfx-cache-v1";
-const urlsToCache = ["/", "/manifest.json", "/favicon.ico", "/apple-touch-icon.png"];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(urlsToCache);
-    })
-  );
+  self.skipWaiting();
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(clients.claim());
 });
 
 self.addEventListener("fetch", (event) => {
+  if (event.request.method !== "GET") return;
+  if (!event.request.url.startsWith(self.location.origin)) return;
+
   event.respondWith(
-    caches.match(event.request).then((response) => {
-      if (response) {
+    caches.match(event.request).then((cached) => {
+      return cached || fetch(event.request).then((response) => {
+        if (response && response.status === 200) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+        }
         return response;
-      }
-      return fetch(event.request);
+      }).catch(() => caches.match("/"));
     })
   );
 });
@@ -27,7 +32,6 @@ self.addEventListener("push", (event) => {
     self.registration.showNotification(data.title, {
       body: data.body,
       icon: "/apple-touch-icon.png",
-      badge: "/apple-touch-icon.png",
     })
   );
 });

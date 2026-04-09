@@ -1,11 +1,17 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
+import NoSleep from "nosleep.js";
 import { playNotificationSound } from "../utils/audio";
 import { requestNotificationPermission, sendBrowserNotification } from "../utils/notifications";
 
 const WORK_DURATION = 25 * 60;
 const BREAK_DURATION = 5 * 60;
+const BASE_POINTS = 10;
+const STREAK_BONUS = 5;
+const STREAK_THRESHOLD = 25;
+const SESSION_UPDATE_INTERVAL = 200;
+const SESSION_INCREMENT = SESSION_UPDATE_INTERVAL / 1000;
 
 type Mode = "work" | "break";
 
@@ -42,51 +48,91 @@ const DEFAULT_STATE: TimerState = {
   endTime: null,
 };
 
+const DEFAULT_STATS: Stats = {
+  focusTime: 0,
+  tasksDone: 0,
+  streak: 0,
+  points: 0,
+};
+
 const TimerContext = createContext<TimerContextValue | undefined>(undefined);
 
 export function TimerProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<TimerState>(DEFAULT_STATE);
-  const [mounted, setMounted] = useState(false);
-
-  const wakeLock = useRef<WakeLockSentinel | null>(null);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-
-  // Initial load from localStorage
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    const loadState = () => {
+  const [state, setState] = useState<TimerState>(() => {
+    if (typeof window === "undefined") return DEFAULT_STATE;
+    try {
       const saved = localStorage.getItem("yaverfx-timer");
       if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (parsed.isRunning && parsed.endTime) {
-            const remaining = Math.max(0, Math.round((parsed.endTime - Date.now()) / 1000));
-            if (remaining > 0) {
-              setState({ ...parsed, timeLeft: remaining });
-            } else {
-              setState(DEFAULT_STATE);
-            }
-          } else {
-            setState(parsed);
+        const parsed = JSON.parse(saved);
+        if (parsed.isRunning && parsed.endTime) {
+          const remaining = Math.max(0, Math.round((parsed.endTime - Date.now()) / 1000));
+          if (remaining > 0) {
+            return { ...parsed, timeLeft: remaining };
           }
-        } catch {
-          setState(DEFAULT_STATE);
+          return DEFAULT_STATE;
+        }
+        if (typeof parsed.mode === "string" && typeof parsed.timeLeft === "number") {
+          return {
+            mode: parsed.mode,
+            timeLeft: parsed.timeLeft,
+            isRunning: false,
+            sessionTime: 0,
+            endTime: null,
+          };
         }
       }
-      setMounted(true);
-    };
-    loadState();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    } catch {
+      console.warn("Failed to load timer state from localStorage");
+    }
+    return DEFAULT_STATE;
+  });
+  const mounted = true;
+
+  const wakeLock = useRef<WakeLockSentinel | null>(null);
+  const noSleep = useRef<NoSleep | null>(null);
+
+  const loadStats = useCallback((): Stats => {
+    try {
+      const stored = localStorage.getItem("yaverfx-stats");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (
+          typeof parsed === "object" &&
+          parsed !== null &&
+          "focusTime" in parsed &&
+          "tasksDone" in parsed &&
+          "streak" in parsed &&
+          "points" in parsed
+        ) {
+          return {
+            focusTime: Number(parsed.focusTime) || 0,
+            tasksDone: Number(parsed.tasksDone) || 0,
+            streak: Number(parsed.streak) || 0,
+            points: Number(parsed.points) || 0,
+          };
+        }
+      }
+    } catch {
+      console.warn("Failed to load stats from localStorage");
+    }
+    return DEFAULT_STATS;
+  }, []);
+
+  const saveStats = useCallback((stats: Stats) => {
+    try {
+      localStorage.setItem("yaverfx-stats", JSON.stringify(stats));
+      window.dispatchEvent(new CustomEvent('yaverfx-stats-update'));
+    } catch {
+      console.warn("Failed to save stats to localStorage");
+    }
   }, []);
 
   const updateStats = useCallback((updates: Partial<Stats>) => {
     if (typeof window === "undefined") return;
-    const stored = localStorage.getItem("yaverfx-stats");
-    const current = stored ? JSON.parse(stored) : { focusTime: 0, tasksDone: 0, streak: 0, points: 0 };
+    const current = loadStats();
     const updated = { ...current, ...updates };
-    localStorage.setItem("yaverfx-stats", JSON.stringify(updated));
-    window.dispatchEvent(new CustomEvent('yaverfx-stats-update'));
-  }, []);
+    saveStats(updated);
+  }, [loadStats, saveStats]);
 
   // Persist state changes
   useEffect(() => {
@@ -95,64 +141,61 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
     }
   }, [state, mounted]);
 
-  // Wake Lock & Keep Alive Logic
-  const enableKeepAlive = useCallback(async () => {
+  const enableWakeLock = useCallback(async () => {
     if (typeof window === "undefined") return;
 
-    // 1. Try Native Wake Lock API
-    if ("wakeLock" in navigator) {
+    if ("wakeLock" in navigator && !wakeLock.current) {
       try {
-        if (!wakeLock.current) {
-          wakeLock.current = await navigator.wakeLock.request("screen");
-        }
+        wakeLock.current = await navigator.wakeLock.request("screen");
+        wakeLock.current.addEventListener("release", () => {
+          wakeLock.current = null;
+        });
       } catch (err) {
-        console.warn("Wake Lock failed", err);
+        console.warn("Wake Lock API failed:", err);
       }
     }
 
-    // 2. Video Fallback (Crucial for iOS PWA)
-    // Needs user gesture to play, so we call this from onClick
-    if (!videoRef.current) {
-      const video = document.createElement("video");
-      video.setAttribute("playsinline", "");
-      video.setAttribute("muted", "");
-      video.setAttribute("loop", "");
-      video.muted = true;
-      video.playsInline = true;
-      video.style.cssText = "position:fixed;left:-1px;top:-1px;width:1px;height:1px;opacity:0.01;pointer-events:none;z-index:-1";
-      video.src = "data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28ybXA0MQAAAAhm";
-      videoRef.current = video;
-      document.body.appendChild(video);
+    if (!noSleep.current) {
+      noSleep.current = new NoSleep();
     }
-    
-    videoRef.current.play().catch(() => {
-      /* Might fail if no user gesture */
-    });
+    try {
+      await noSleep.current.enable();
+    } catch (err) {
+      console.warn("NoSleep enable failed:", err);
+    }
   }, []);
 
-  const disableKeepAlive = useCallback(() => {
+  const disableWakeLock = useCallback(() => {
     if (wakeLock.current) {
       wakeLock.current.release().catch(() => {});
       wakeLock.current = null;
     }
-    if (videoRef.current) {
-      videoRef.current.pause();
+    if (noSleep.current) {
+      noSleep.current.disable();
+      noSleep.current = null;
     }
   }, []);
 
-  // Lifecycle for wake lock
   useEffect(() => {
     if (!state.isRunning) return;
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") enableKeepAlive();
+
+    enableWakeLock();
+
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === "visible" && state.isRunning) {
+        await enableWakeLock();
+      }
     };
+
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, [state.isRunning, enableKeepAlive]);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [state.isRunning, enableWakeLock]);
 
   const handleTimerComplete = useCallback(() => {
     playNotificationSound();
-    disableKeepAlive();
+    disableWakeLock();
     sendBrowserNotification(
       state.mode === "work" ? "Çalışma seansı tamamlandı!" : "Mola süresi bitti!",
       state.mode === "work" ? "Harika iş çıkardın, şimdi biraz dinlenme vakti. 🌿" : "Yeterince dinlendin, şimdi tekrar odaklanma zamanı! 🎯"
@@ -160,10 +203,9 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
 
     if (state.mode === "work") {
       const sessionMinutes = Math.round(state.sessionTime / 60);
-      const earnedPoints = 10 + (sessionMinutes >= 25 ? 5 : 0);
+      const earnedPoints = BASE_POINTS + (sessionMinutes >= STREAK_THRESHOLD ? STREAK_BONUS : 0);
       
-      const stored = localStorage.getItem("yaverfx-stats");
-      const currentStats = stored ? JSON.parse(stored) : { focusTime: 0, tasksDone: 0, streak: 0, points: 0 };
+      const currentStats = loadStats();
       
       updateStats({
         focusTime: currentStats.focusTime + sessionMinutes,
@@ -172,15 +214,18 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
       });
       setState(prev => ({ ...prev, sessionTime: 0 }));
     }
-  }, [state.mode, state.sessionTime, updateStats, disableKeepAlive]);
+  }, [state.mode, state.sessionTime, updateStats, disableWakeLock, loadStats]);
 
   useEffect(() => {
     if (!state.isRunning || !mounted) return;
+
     const interval = setInterval(() => {
       if (!state.endTime) return;
+
       const remaining = Math.max(0, Math.round((state.endTime - Date.now()) / 1000));
       
       if (remaining === 0) {
+        clearInterval(interval);
         handleTimerComplete();
         const nextMode = state.mode === "work" ? "break" : "work";
         const duration = nextMode === "work" ? WORK_DURATION : BREAK_DURATION;
@@ -190,38 +235,42 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
           timeLeft: duration,
           endTime: Date.now() + duration * 1000,
           sessionTime: 0,
+          isRunning: false,
         }));
+        disableWakeLock();
       } else {
         setState(prev => ({ 
           ...prev, 
           timeLeft: remaining,
-          sessionTime: prev.mode === "work" ? prev.sessionTime + 0.2 : prev.sessionTime 
+          sessionTime: prev.mode === "work" ? prev.sessionTime + SESSION_INCREMENT : prev.sessionTime 
         }));
       }
-    }, 200);
-    return () => clearInterval(interval);
-  }, [state.isRunning, state.endTime, state.mode, handleTimerComplete, mounted]);
+    }, SESSION_UPDATE_INTERVAL);
 
-  const toggleTimer = () => {
+    return () => clearInterval(interval);
+  }, [state.isRunning, state.endTime, state.mode, handleTimerComplete, mounted, disableWakeLock]);
+
+  const toggleTimer = useCallback(async () => {
     if (!state.isRunning) {
-      requestNotificationPermission();
-      enableKeepAlive(); // Direct user gesture!
+      const permission = await requestNotificationPermission();
+      console.log("Notification permission:", permission);
+      await enableWakeLock();
       setState(prev => ({ ...prev, isRunning: true, endTime: Date.now() + prev.timeLeft * 1000 }));
     } else {
-      disableKeepAlive();
+      disableWakeLock();
       setState(prev => ({ ...prev, isRunning: false, endTime: null }));
     }
-  };
+  }, [state.isRunning, enableWakeLock, disableWakeLock]);
 
-  const resetTimer = () => {
-    disableKeepAlive();
+  const resetTimer = useCallback(() => {
+    disableWakeLock();
     setState(DEFAULT_STATE);
-  };
+  }, [disableWakeLock]);
 
-  const setMode = (mode: Mode) => {
-    disableKeepAlive();
+  const setMode = useCallback((mode: Mode) => {
+    disableWakeLock();
     setState({ ...DEFAULT_STATE, mode, timeLeft: mode === "work" ? WORK_DURATION : BREAK_DURATION });
-  };
+  }, [disableWakeLock]);
 
   const minutes = Math.floor(state.timeLeft / 60);
   const seconds = state.timeLeft % 60;

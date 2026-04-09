@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTimer } from "../context/TimerContext";
 
 interface Task {
@@ -14,9 +14,44 @@ interface Task {
 }
 
 const EMOJIS = ["📝", "🎯", "⚡", "💡", "📞", "🛒", "🏃", "💻", "📚", "🎨", "🔥", "🧘"];
+const STORAGE_KEY = "yaverfx-tasks";
+
+function validateTasks(data: unknown): data is Task[] {
+  if (!Array.isArray(data)) return false;
+  return data.every(task => 
+    typeof task === "object" &&
+    task !== null &&
+    typeof task.id === "string" &&
+    typeof task.text === "string" &&
+    typeof task.completed === "boolean"
+  );
+}
+
+function loadTasks(): Task[] {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (validateTasks(parsed)) {
+        return parsed;
+      }
+    }
+  } catch {
+    console.warn("Failed to load tasks from localStorage");
+  }
+  return [];
+}
+
+function saveTasks(tasks: Task[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+  } catch {
+    console.warn("Failed to save tasks to localStorage");
+  }
+}
 
 export default function TaskList() {
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [tasks, setTasks] = useState<Task[]>(() => loadTasks());
   const [input, setInput] = useState("");
   const [emoji, setEmoji] = useState("📝");
   const [time, setTime] = useState("");
@@ -26,24 +61,10 @@ export default function TaskList() {
   
   const { updateStats } = useTimer();
 
-  useEffect(() => {
-    const stored = localStorage.getItem("yaverfx-tasks");
-    if (stored) {
-      try {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setTasks(JSON.parse(stored));
-      } catch {}
-    }
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem("yaverfx-tasks", JSON.stringify(tasks));
-  }, [tasks]);
-
-  const addTask = () => {
+  const addTask = useCallback(() => {
     const trimmed = input.trim();
     if (!trimmed) return;
-    setTasks((prev) => [
+    setTasks(prev => [
       { id: crypto.randomUUID(), text: trimmed, completed: false, emoji, time, date, note },
       ...prev
     ]);
@@ -52,11 +73,11 @@ export default function TaskList() {
     setTime("");
     setDate("");
     setShowDetails(false);
-  };
+  }, [input, emoji, time, date, note]);
 
-  const toggleTask = (id: string) => {
-    setTasks((prev) => {
-      const updated = prev.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t));
+  const toggleTask = useCallback((id: string) => {
+    setTasks(prev => {
+      const updated = prev.map(t => t.id === id ? { ...t, completed: !t.completed } : t);
       const wasCompleted = prev.find(t => t.id === id)?.completed;
       const isNowCompleted = updated.find(t => t.id === id)?.completed;
       
@@ -65,11 +86,15 @@ export default function TaskList() {
       }
       return updated;
     });
-  };
+  }, [updateStats]);
 
-  const deleteTask = (id: string) => {
-    setTasks((prev) => prev.filter((t) => t.id !== id));
-  };
+  const deleteTask = useCallback((id: string) => {
+    setTasks(prev => prev.filter(t => t.id !== id));
+  }, []);
+
+  useEffect(() => {
+    saveTasks(tasks);
+  }, [tasks]);
 
   const completedCount = tasks.filter(t => t.completed).length;
 
