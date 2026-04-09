@@ -42,6 +42,14 @@ export default function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html: `
+              // Set app title from localStorage or default
+              (function() {
+                var appName = localStorage.getItem('yaverfx-app-name') || 'Kerem';
+                document.title = appName;
+                var appleMeta = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+                if (appleMeta) appleMeta.setAttribute('content', appName);
+              })();
+              
               if ('serviceWorker' in navigator) {
                 window.addEventListener('load', function() {
                   navigator.serviceWorker.register('/sw.js').then(function(registration) {

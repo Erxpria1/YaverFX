@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { useTimer } from "../context/TimerContext";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useTimer, getAppName, setAppName } from "../context/TimerContext";
 
 interface Task {
   id: string;
@@ -45,23 +45,128 @@ function loadTasks(): Task[] {
 function saveTasks(tasks: Task[]): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+    scheduleTaskNotifications(tasks);
   } catch {
     console.warn("Failed to save tasks to localStorage");
   }
 }
 
+function scheduleTaskNotifications(tasks: Task[]) {
+  if (typeof window === "undefined") return;
+  
+  // Clear existing task notification timeout
+  const existingTimeout = localStorage.getItem("yaverfx-task-notif-timeout");
+  if (existingTimeout) {
+    clearTimeout(parseInt(existingTimeout));
+  }
+  
+  const now = Date.now();
+  let nextNotificationTime: number | null = null;
+  
+  for (const task of tasks) {
+    if (task.date && task.time) {
+      const taskDateTime = new Date(`${task.date}T${task.time}`).getTime();
+      if (taskDateTime > now && (!nextNotificationTime || taskDateTime < nextNotificationTime)) {
+        nextNotificationTime = taskDateTime;
+      }
+    }
+  }
+  
+  if (nextNotificationTime) {
+    const delay = nextNotificationTime - now;
+    const timeoutId = setTimeout(() => {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const allTasks: Task[] = JSON.parse(stored);
+        const appName = localStorage.getItem("yaverfx-app-name") || "YaverFX";
+        
+        for (const task of allTasks) {
+          if (task.date && task.time) {
+            const taskDateTime = new Date(`${task.date}T${task.time}`).getTime();
+            const timeDiff = Math.abs(Date.now() - taskDateTime);
+            if (timeDiff < 60000) { // Within 1 minute
+              if ("Notification" in window && Notification.permission === "granted") {
+                new Notification(`${appName} - Görev Zamanı!`, {
+                  body: `${task.emoji || "📝"} ${task.text}`,
+                  icon: "/apple-touch-icon.png"
+                });
+              }
+            }
+          }
+        }
+      }
+    }, delay);
+    
+    localStorage.setItem("yaverfx-task-notif-timeout", timeoutId.toString());
+  }
+}
+
 export default function TaskList() {
-  const [tasks, setTasks] = useState<Task[]>(() => loadTasks());
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [isLoaded, setIsLoaded] = useState(false);
   const [input, setInput] = useState("");
   const [emoji, setEmoji] = useState("📝");
   const [time, setTime] = useState("");
   const [date, setDate] = useState("");
   const [note, setNote] = useState("");
   const [showDetails, setShowDetails] = useState(false);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
   
   const { updateStats } = useTimer();
 
-  const addTask = useCallback(() => {
+  // Load tasks only on client side to avoid hydration mismatch
+  useEffect(() => {
+    setTasks(loadTasks());
+    setIsLoaded(true);
+  }, []);
+
+  // Emoji picker keyboard navigation
+  const handleEmojiKeyDown = (e: React.KeyboardEvent) => {
+    const currentIndex = EMOJIS.indexOf(emoji);
+    let newIndex = currentIndex;
+
+    switch(e.key) {
+      case "ArrowRight":
+        e.preventDefault();
+        newIndex = (currentIndex + 1) % EMOJIS.length;
+        break;
+      case "ArrowLeft":
+        e.preventDefault();
+        newIndex = (currentIndex - 1 + EMOJIS.length) % EMOJIS.length;
+        break;
+      case "ArrowDown":
+        e.preventDefault();
+        newIndex = Math.min(currentIndex + 4, EMOJIS.length - 1);
+        break;
+      case "ArrowUp":
+        e.preventDefault();
+        newIndex = Math.max(currentIndex - 4, 0);
+        break;
+      case "Tab":
+        // Allow default tab behavior but scroll into view
+        setTimeout(() => {
+          const active = document.activeElement;
+          if (active?.classList.contains('emoji-btn')) {
+            active.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+          }
+        }, 0);
+        return;
+      case "Enter":
+      case " ":
+        e.preventDefault();
+        return;
+      default:
+        return;
+    }
+    
+    setEmoji(EMOJIS[newIndex]);
+    setTimeout(() => {
+      const buttons = emojiPickerRef.current?.querySelectorAll('.emoji-btn');
+      buttons?.[newIndex]?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }, 0);
+  };
+
+  const addTaskCallback = useCallback(() => {
     const trimmed = input.trim();
     if (!trimmed) return;
     setTasks(prev => [
@@ -109,14 +214,14 @@ export default function TaskList() {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && addTask()}
+            onKeyDown={(e) => e.key === "Enter" && addTaskCallback()}
             placeholder="Yeni ne başarmak istersin?"
             className="task-input"
           />
           <button onClick={() => setShowDetails(!showDetails)} className="task-expand-btn">
             {showDetails ? "▲" : "▼"}
           </button>
-          <button onClick={addTask} className="task-add-btn">
+          <button onClick={addTaskCallback} className="task-add-btn">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M12 5v14M5 12h14" />
             </svg>
@@ -125,10 +230,18 @@ export default function TaskList() {
 
         {showDetails && (
           <div className="task-details-form animate-in">
-            <div className="emoji-picker">
-              {EMOJIS.map(e => (
-                <button key={e} onClick={() => setEmoji(e)} className={`emoji-btn ${emoji === e ? 'active' : ''}`}>{e}</button>
-              ))}
+            <div className="emoji-picker" role="listbox" tabIndex={0} ref={emojiPickerRef} onKeyDown={handleEmojiKeyDown}>
+              <div className="emoji-scroll">
+                {EMOJIS.map(e => (
+                  <button 
+                    key={e} 
+                    role="option"
+                    aria-selected={emoji === e}
+                    onClick={() => setEmoji(e)} 
+                    className={`emoji-btn ${emoji === e ? 'active' : ''}`}
+                  >{e}</button>
+                ))}
+              </div>
             </div>
             <div className="task-datetime-row">
               <input type="date" value={date} onChange={e => setDate(e.target.value)} className="task-detail-input" />
@@ -152,7 +265,13 @@ export default function TaskList() {
       )}
 
       <div className="task-list">
-        {tasks.length === 0 && (
+        {!isLoaded && (
+          <div className="task-empty">
+            <span style={{ fontSize: '40px', marginBottom: '12px', display: 'block' }}>✨</span>
+            <p className="menu-label">YÜKLENİYOR...</p>
+          </div>
+        )}
+        {isLoaded && tasks.length === 0 && (
           <div className="task-empty">
             <span style={{ fontSize: '40px', marginBottom: '12px', display: 'block' }}>✨</span>
             <p className="menu-label">LİSTEYİ OLUŞTURMAYA BAŞLA</p>

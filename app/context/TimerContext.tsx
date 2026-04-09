@@ -55,6 +55,19 @@ const DEFAULT_STATS: Stats = {
   points: 0,
 };
 
+const DEFAULT_APP_NAME = "Kerem";
+
+export function getAppName(): string {
+  if (typeof window === "undefined") return DEFAULT_APP_NAME;
+  return localStorage.getItem("yaverfx-app-name") || DEFAULT_APP_NAME;
+}
+
+export function setAppName(name: string) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem("yaverfx-app-name", name);
+  window.dispatchEvent(new CustomEvent("yaverfx-name-update"));
+}
+
 const TimerContext = createContext<TimerContextValue | undefined>(undefined);
 
 export function TimerProvider({ children }: { children: React.ReactNode }) {

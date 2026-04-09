@@ -1,27 +1,55 @@
-const CACHE_NAME = "yaverfx-cache-v1";
+const CACHE_VERSION = "v2-" + Date.now();
+const CACHE_NAME = "yaverfx-cache-" + CACHE_VERSION;
 
+// Skip waiting immediately on install
 self.addEventListener("install", (event) => {
   self.skipWaiting();
 });
 
+// Claim clients immediately on activate
 self.addEventListener("activate", (event) => {
-  event.waitUntil(clients.claim());
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cacheName) => {
+          if (cacheName !== CACHE_NAME) {
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    }).then(() => self.clients.claim())
+  );
 });
 
+// Network-first strategy - always try network first
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   if (!event.request.url.startsWith(self.location.origin)) return;
 
+  // Skip API and static Next.js paths for immediate fresh content
+  const url = new URL(event.request.url);
+  if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/_next/")) {
+    return;
+  }
+
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      return cached || fetch(event.request).then((response) => {
+    fetch(event.request)
+      .then((response) => {
+        // Clone and cache successful responses
         if (response && response.status === 200) {
           const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, clone);
+          });
         }
         return response;
-      }).catch(() => caches.match("/"));
-    })
+      })
+      .catch(() => {
+        // Fallback to cache on network failure
+        return caches.match(event.request).then((cached) => {
+          return cached || caches.match("/");
+        });
+      })
   );
 });
 

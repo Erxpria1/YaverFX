@@ -9,6 +9,7 @@
   "theme_color": "#09090b",
   "scope": "/",
   "categories": ["productivity", "utilities"],
+  "version": "2",
   "icons": [
     {
       "src": "/apple-touch-icon.png",

@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import PomodoroTimer from "./components/PomodoroTimer";
 import TaskList from "./components/TaskList";
 import AmbientSounds from "./components/AmbientSounds";
 import SiteBlocker from "./components/SiteBlocker";
 import RewardSystem from "./components/RewardSystem";
 import ThemeSelector from "./components/ThemeSelector";
+import { getAppName } from "./context/TimerContext";
 
 type Page = "home" | "tasks" | "sounds" | "blocker" | "rewards" | "theme";
 
@@ -22,6 +23,14 @@ const MENU_ITEMS = [
 export default function Home() {
   const [page, setPage] = useState<Page>("home");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [appName, setAppName] = useState(getAppName());
+
+  useEffect(() => {
+    const updateName = () => setAppName(getAppName());
+    updateName();
+    window.addEventListener("yaverfx-name-update", updateName);
+    return () => window.removeEventListener("yaverfx-name-update", updateName);
+  }, []);
 
   const renderPage = () => {
     switch (page) {
@@ -39,7 +48,7 @@ export default function Home() {
       <header className="header">
         <div className="brand">
           <span className="logo-dot"></span>
-          <h1>YaverFX</h1>
+          <h1>{appName}</h1>
         </div>
       </header>
 

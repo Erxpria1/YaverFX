@@ -229,8 +229,16 @@ body { background: var(--bg); color: var(--text); overflow: hidden; height: 100d
 .task-add-btn { background: var(--accent); color: var(--btn-text); border-radius: var(--radius-sm); }
 .task-checkbox { width: 24px; height: 24px; border-radius: var(--radius-sm); border: 2px solid var(--accent); }
 .task-checkbox.checked { background: var(--accent); }
-.task-detail-input { background: var(--bg); border: var(--border-light); color: var(--text); border-radius: var(--radius-sm); }
+.task-detail-input { background: var(--bg); border: var(--border-light); color: var(--text); border-radius: var(--radius-sm); padding: 12px; font-size: 14px; -webkit-appearance: none; appearance: none; }
 .task-detail-input:focus { border-color: var(--accent); }
+/* iOS date/time picker native styling */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  opacity: 0.6;
+}
+.task-datetime-row { display: flex; gap: 8px; margin: 12px 0; }
+.task-datetime-row input { flex: 1; }
 
 /* Ambient Sounds */
 .sound-toggle { background: var(--surface-light); border-radius: 50%; color: var(--text); }
@@ -241,3 +249,49 @@ body { background: var(--bg); color: var(--text); overflow: hidden; height: 100d
 /* Rewards */
 .reward-val { color: var(--accent); }
 .reward-fill { background: var(--accent); }
+
+/* Emoji Picker */
+.emoji-picker { display: flex; flex-direction: column; gap: 4px; }
+.emoji-scroll { display: flex; flex-wrap: wrap; gap: 8px; max-height: 120px; overflow-y: auto; padding: 4px; scrollbar-width: thin; scrollbar-color: var(--accent) var(--surface); }
+.emoji-scroll::-webkit-scrollbar { width: 6px; }
+.emoji-scroll::-webkit-scrollbar-track { background: var(--surface); border-radius: 3px; }
+.emoji-scroll::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 3px; }
+.emoji-btn { font-size: 24px; padding: 8px; border-radius: var(--radius-sm); transition: all 0.2s; background: transparent; border: 2px solid transparent; }
+.emoji-btn:hover { background: var(--surface-light); transform: scale(1.1); }
+.emoji-btn.active { background: var(--accent); border-color: var(--accent); }
+.emoji-btn:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Task Input Mobile Improvements */
+.task-input-container { display: flex; flex-direction: column; gap: 12px; padding: 16px; }
+.task-input-main { display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--surface-light); border-radius: var(--radius-md); }
+.task-input-main .emoji-select-btn { 
+  width: 44px; 
+  height: 44px; 
+  font-size: 24px; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+.task-input-main .task-input { flex: 1; min-width: 0; padding: 8px; }
+.task-input-main .task-expand-btn { 
+  width: 44px; 
+  height: 44px; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center;
+  font-size: 16px;
+  color: var(--text-secondary);
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+.task-input-main .task-add-btn { 
+  width: 44px; 
+  height: 44px; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center;
+  flex-shrink: 0;
+}
