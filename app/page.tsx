@@ -7,9 +7,11 @@ import AmbientSounds from "./components/AmbientSounds";
 import SiteBlocker from "./components/SiteBlocker";
 import RewardSystem from "./components/RewardSystem";
 import ThemeSelector from "./components/ThemeSelector";
+import EmergencyTimer from "./components/EmergencyTimer";
+import Analytics from "./components/Analytics";
 import { getAppName } from "./context/TimerContext";
 
-type Page = "home" | "tasks" | "sounds" | "blocker" | "rewards" | "theme";
+type Page = "home" | "tasks" | "sounds" | "blocker" | "rewards" | "theme" | "emergency" | "analytics";
 
 const MENU_ITEMS = [
   { id: "home", icon: "🏠", label: "Ana Ekran" },
@@ -18,6 +20,8 @@ const MENU_ITEMS = [
   { id: "blocker", icon: "🚫", label: "Engelleyici" },
   { id: "rewards", icon: "🏆", label: "Başarılar" },
   { id: "theme", icon: "🎨", label: "Tema Seç" },
+  { id: "emergency", icon: "🛑", label: "Acil Durakla" },
+  { id: "analytics", icon: "📊", label: "Analitik" },
 ] as const;
 
 export default function Home() {
@@ -40,6 +44,8 @@ export default function Home() {
       case "blocker": return <div className="page-container animate-in"><h2 className="page-title">Engelleyici</h2><SiteBlocker /></div>;
       case "rewards": return <div className="page-container animate-in"><h2 className="page-title">Ödüller</h2><RewardSystem /></div>;
       case "theme": return <div className="page-container animate-in"><h2 className="page-title">Görünüm</h2><ThemeSelector /></div>;
+      case "emergency": return <div className="page-container animate-in"><h2 className="page-title">Acil Duraklama</h2><EmergencyTimer /></div>;
+      case "analytics": return <div className="page-container animate-in"><h2 className="page-title">Analitik</h2><Analytics /></div>;
     }
   };
 

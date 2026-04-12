@@ -1,5 +1,4 @@
-const CACHE_VERSION = "v2-" + Date.now();
-const CACHE_NAME = "yaverfx-cache-" + CACHE_VERSION;
+const CACHE_NAME = "yaverfx-cache-v3";
 
 // Skip waiting immediately on install
 self.addEventListener("install", (event) => {
@@ -21,38 +20,37 @@ self.addEventListener("activate", (event) => {
   );
 });
 
-// Network-first strategy - always try network first
+// Stale-while-revalidate strategy
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   if (!event.request.url.startsWith(self.location.origin)) return;
 
-  // Skip API and static Next.js paths for immediate fresh content
   const url = new URL(event.request.url);
+  // Skip API and Next.js internal paths
   if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/_next/")) {
     return;
   }
 
   event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        // Clone and cache successful responses
-        if (response && response.status === 200) {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, clone);
-          });
-        }
-        return response;
-      })
-      .catch(() => {
-        // Fallback to cache on network failure
-        return caches.match(event.request).then((cached) => {
-          return cached || caches.match("/");
-        });
-      })
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.match(event.request).then((cached) => {
+        const fetchPromise = fetch(event.request)
+          .then((response) => {
+            if (response && response.status === 200) {
+              cache.put(event.request, response.clone());
+            }
+            return response;
+          })
+          .catch(() => null);
+
+        // Return cached immediately if available, otherwise wait for network
+        return cached || fetchPromise;
+      });
+    })
   );
 });
 
+// Push notification handler
 self.addEventListener("push", (event) => {
   const data = event.data ? event.data.json() : { title: "YaverFX", body: "Odaklanma zamanı!" };
   
@@ -60,6 +58,40 @@ self.addEventListener("push", (event) => {
     self.registration.showNotification(data.title, {
       body: data.body,
       icon: "/apple-touch-icon.png",
+      badge: "/apple-touch-icon.png",
+      tag: "yaverfx-notification",
+      requireInteraction: false
     })
   );
+});
+
+// Notification click handler
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      // Focus existing window if available
+      for (const client of clientList) {
+        if (client.url === "/" && "focus" in client) {
+          return client.focus();
+        }
+      }
+      // Otherwise open new window
+      if (clients.openWindow) {
+        return clients.openWindow("/");
+      }
+    })
+  );
+});
+
+// Background sync for timer notifications
+self.addEventListener("sync", (event) => {
+  if (event.tag === "yaverfx-timer-complete") {
+    event.waitUntil(
+      self.registration.showNotification("YaverFX", {
+        body: "Zamanlayıcı tamamlandı!",
+        icon: "/apple-touch-icon.png"
+      })
+    );
+  }
 });
