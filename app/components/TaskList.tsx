@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useTimer, getAppName, setAppName } from "../context/TimerContext";
+import { useTimer, getAppName } from "../context/TimerContext";
+import { playTaskSound, sendTaskNotification } from "../utils/notifications";
 
 interface Task {
   id: string;
@@ -15,6 +16,7 @@ interface Task {
 
 const EMOJIS = ["📝", "🎯", "⚡", "💡", "📞", "🛒", "🏃", "💻", "📚", "🎨", "🔥", "🧘"];
 const STORAGE_KEY = "yaverfx-tasks";
+const LAST_CHECK_KEY = "yaverfx-task-last-check";
 
 function validateTasks(data: unknown): data is Task[] {
   if (!Array.isArray(data)) return false;
@@ -45,60 +47,76 @@ function loadTasks(): Task[] {
 function saveTasks(tasks: Task[]): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
-    scheduleTaskNotifications(tasks);
   } catch {
     console.warn("Failed to save tasks to localStorage");
   }
 }
 
-function scheduleTaskNotifications(tasks: Task[]) {
+// Check and notify for tasks that are due
+async function checkAndNotifyTasks(tasks: Task[]): Promise<void> {
   if (typeof window === "undefined") return;
   
-  // Clear existing task notification timeout
-  const existingTimeout = localStorage.getItem("yaverfx-task-notif-timeout");
-  if (existingTimeout) {
-    clearTimeout(parseInt(existingTimeout));
-  }
-  
   const now = Date.now();
-  let nextNotificationTime: number | null = null;
+  const appName = localStorage.getItem("yaverfx-app-name") || "YaverFX";
   
   for (const task of tasks) {
-    if (task.date && task.time) {
-      const taskDateTime = new Date(`${task.date}T${task.time}`).getTime();
-      if (taskDateTime > now && (!nextNotificationTime || taskDateTime < nextNotificationTime)) {
-        nextNotificationTime = taskDateTime;
+    if (task.completed || !task.date || !task.time) continue;
+    
+    const taskDateTime = new Date(`${task.date}T${task.time}`).getTime();
+    const timeDiff = now - taskDateTime;
+    
+    // If task is due within the last 2 minutes and we haven't notified recently
+    if (timeDiff >= 0 && timeDiff < 120000) {
+      // Check if we already notified for this task recently
+      const notifiedKey = `yaverfx-task-notified-${task.id}`;
+      const lastNotified = localStorage.getItem(notifiedKey);
+      
+      if (!lastNotified || (now - parseInt(lastNotified)) > 60000) {
+        // Play sound
+        playTaskSound();
+        
+        // Send notification
+        await sendTaskNotification(task.text, task.emoji);
+        
+        // Mark as notified
+        localStorage.setItem(notifiedKey, now.toString());
       }
     }
   }
   
-  if (nextNotificationTime) {
-    const delay = nextNotificationTime - now;
-    const timeoutId = setTimeout(() => {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const allTasks: Task[] = JSON.parse(stored);
-        const appName = localStorage.getItem("yaverfx-app-name") || "YaverFX";
-        
-        for (const task of allTasks) {
-          if (task.date && task.time) {
-            const taskDateTime = new Date(`${task.date}T${task.time}`).getTime();
-            const timeDiff = Math.abs(Date.now() - taskDateTime);
-            if (timeDiff < 60000) { // Within 1 minute
-              if ("Notification" in window && Notification.permission === "granted") {
-                new Notification(`${appName} - Görev Zamanı!`, {
-                  body: `${task.emoji || "📝"} ${task.text}`,
-                  icon: "/apple-touch-icon.png"
-                });
-              }
-            }
-          }
-        }
-      }
-    }, delay);
+  localStorage.setItem(LAST_CHECK_KEY, now.toString());
+}
+
+// Schedule notifications for upcoming tasks
+function scheduleUpcomingTasks(tasks: Task[]): NodeJS.Timeout | null {
+  if (typeof window === "undefined") return null;
+  
+  const now = Date.now();
+  let nextTaskTime: number | null = null;
+  let nextTask: Task | null = null;
+  
+  for (const task of tasks) {
+    if (task.completed || !task.date || !task.time) continue;
     
-    localStorage.setItem("yaverfx-task-notif-timeout", timeoutId.toString());
+    const taskDateTime = new Date(`${task.date}T${task.time}`).getTime();
+    if (taskDateTime > now && (!nextTaskTime || taskDateTime < nextTaskTime)) {
+      nextTaskTime = taskDateTime;
+      nextTask = task;
+    }
   }
+  
+  if (nextTaskTime && nextTask) {
+    const delay = nextTaskTime - now;
+    // Only schedule if it's within the next hour (to avoid scheduling too far ahead)
+    if (delay < 3600000) {
+      return setTimeout(() => {
+        playTaskSound();
+        sendTaskNotification(nextTask.text, nextTask.emoji);
+      }, delay);
+    }
+  }
+  
+  return null;
 }
 
 export default function TaskList() {
@@ -111,14 +129,46 @@ export default function TaskList() {
   const [note, setNote] = useState("");
   const [showDetails, setShowDetails] = useState(false);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
+  const scheduledTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const { updateStats } = useTimer();
 
-  // Load tasks only on client side to avoid hydration mismatch
+  // Load tasks on mount
   useEffect(() => {
-    setTasks(loadTasks());
+    const loadedTasks = loadTasks();
+    setTasks(loadedTasks);
     setIsLoaded(true);
+    
+    // Check for any overdue tasks immediately
+    checkAndNotifyTasks(loadedTasks);
+    
+    // Schedule upcoming task notifications
+    if (scheduledTimeoutRef.current) {
+      clearTimeout(scheduledTimeoutRef.current);
+    }
+    scheduledTimeoutRef.current = scheduleUpcomingTasks(loadedTasks);
+    
+    // Also check periodically (every minute)
+    const checkInterval = setInterval(() => {
+      const currentTasks = loadTasks();
+      checkAndNotifyTasks(currentTasks);
+    }, 60000);
+    
+    return () => {
+      clearInterval(checkInterval);
+      if (scheduledTimeoutRef.current) {
+        clearTimeout(scheduledTimeoutRef.current);
+      }
+    };
   }, []);
+
+  // Update schedule when tasks change
+  useEffect(() => {
+    if (scheduledTimeoutRef.current) {
+      clearTimeout(scheduledTimeoutRef.current);
+    }
+    scheduledTimeoutRef.current = scheduleUpcomingTasks(tasks);
+  }, [tasks]);
 
   // Emoji picker keyboard navigation
   const handleEmojiKeyDown = (e: React.KeyboardEvent) => {
@@ -143,7 +193,6 @@ export default function TaskList() {
         newIndex = Math.max(currentIndex - 4, 0);
         break;
       case "Tab":
-        // Allow default tab behavior but scroll into view
         setTimeout(() => {
           const active = document.activeElement;
           if (active?.classList.contains('emoji-btn')) {
@@ -169,10 +218,30 @@ export default function TaskList() {
   const addTaskCallback = useCallback(() => {
     const trimmed = input.trim();
     if (!trimmed) return;
-    setTasks(prev => [
-      { id: crypto.randomUUID(), text: trimmed, completed: false, emoji, time, date, note },
-      ...prev
-    ]);
+    
+    const newTask: Task = {
+      id: crypto.randomUUID(),
+      text: trimmed,
+      completed: false,
+      emoji,
+      time: time || undefined,
+      date: date || undefined,
+      note: note || undefined,
+    };
+    
+    setTasks(prev => {
+      const updated = [newTask, ...prev];
+      saveTasks(updated);
+      
+      // Schedule notification for new task
+      if (scheduledTimeoutRef.current) {
+        clearTimeout(scheduledTimeoutRef.current);
+      }
+      scheduledTimeoutRef.current = scheduleUpcomingTasks(updated);
+      
+      return updated;
+    });
+    
     setInput("");
     setNote("");
     setTime("");
@@ -189,17 +258,19 @@ export default function TaskList() {
       if (!wasCompleted && isNowCompleted) {
         updateStats({ points: 5, tasksDone: 1 });
       }
+      
+      saveTasks(updated);
       return updated;
     });
   }, [updateStats]);
 
   const deleteTask = useCallback((id: string) => {
-    setTasks(prev => prev.filter(t => t.id !== id));
+    setTasks(prev => {
+      const updated = prev.filter(t => t.id !== id);
+      saveTasks(updated);
+      return updated;
+    });
   }, []);
-
-  useEffect(() => {
-    saveTasks(tasks);
-  }, [tasks]);
 
   const completedCount = tasks.filter(t => t.completed).length;
 

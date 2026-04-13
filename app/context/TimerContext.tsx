@@ -2,8 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import NoSleep from "nosleep.js";
-import { playNotificationSound } from "../utils/audio";
-import { requestNotificationPermission, sendBrowserNotification } from "../utils/notifications";
+import { playWorkCompleteSound, playBreakCompleteSound, requestNotificationPermission, sendBrowserNotification } from "../utils/notifications";
 
 const WORK_DURATION = 25 * 60;
 const BREAK_DURATION = 5 * 60;
@@ -100,9 +99,10 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
     return DEFAULT_STATE;
   });
   const mounted = true;
-
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const wakeLock = useRef<WakeLockSentinel | null>(null);
   const noSleep = useRef<NoSleep | null>(null);
+  const hasNotifiedRef = useRef(false); // Prevent double notifications
 
   const loadStats = useCallback((): Stats => {
     try {
@@ -157,6 +157,7 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
   const enableWakeLock = useCallback(async () => {
     if (typeof window === "undefined") return;
 
+    // Wake Lock API
     if ("wakeLock" in navigator && !wakeLock.current) {
       try {
         wakeLock.current = await navigator.wakeLock.request("screen");
@@ -168,6 +169,7 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
+    // NoSleep.js fallback
     if (!noSleep.current) {
       noSleep.current = new NoSleep();
     }
@@ -189,100 +191,187 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  useEffect(() => {
-    if (!state.isRunning) return;
-
-    enableWakeLock();
-
-    const handleVisibilityChange = async () => {
-      if (document.visibilityState === "visible" && state.isRunning) {
-        await enableWakeLock();
-      }
-    };
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, [state.isRunning, enableWakeLock]);
-
-  const handleTimerComplete = useCallback(() => {
-    playNotificationSound();
+  const handleTimerComplete = useCallback(async () => {
+    // Prevent double notification
+    if (hasNotifiedRef.current) return;
+    hasNotifiedRef.current = true;
+    
+    // Always ensure wake lock is disabled
     disableWakeLock();
-    sendBrowserNotification(
-      state.mode === "work" ? "Çalışma seansı tamamlandı!" : "Mola süresi bitti!",
-      state.mode === "work" ? "Harika iş çıkardın, şimdi biraz dinlenme vakti. 🌿" : "Yeterince dinlendin, şimdi tekrar odaklanma zamanı! 🎯"
-    );
-
+    
+    // Always request fresh notification permission before sending
+    const permission = await requestNotificationPermission();
+    
     if (state.mode === "work") {
+      // Play work complete sound
+      playWorkCompleteSound();
+      
+      // Send browser notification if permitted
+      if (permission === "granted") {
+        sendBrowserNotification(
+          "Çalışma seansı tamamlandı! 🎯",
+          "Harika iş çıkardın, şimdi biraz dinlenme vakti. 🌿"
+        );
+      }
+      
+      // Calculate and save stats
       const sessionMinutes = Math.round(state.sessionTime / 60);
       const earnedPoints = BASE_POINTS + (sessionMinutes >= STREAK_THRESHOLD ? STREAK_BONUS : 0);
-      
       const currentStats = loadStats();
-      
       updateStats({
         focusTime: currentStats.focusTime + sessionMinutes,
         points: currentStats.points + earnedPoints,
         streak: currentStats.streak + 1,
       });
-      setState(prev => ({ ...prev, sessionTime: 0 }));
+    } else {
+      // Break complete
+      playBreakCompleteSound();
+      
+      if (permission === "granted") {
+        sendBrowserNotification(
+          "Mola süresi bitti! 🌿",
+          "Yeterince dinlendin, şimdi tekrar odaklanma zamanı! 🎯"
+        );
+      }
     }
+    
+    // Schedule auto-transition to next mode after a brief delay
+    setTimeout(() => {
+      const nextMode = state.mode === "work" ? "break" : "work";
+      const duration = nextMode === "work" ? WORK_DURATION : BREAK_DURATION;
+      
+      setState(prev => ({
+        ...prev,
+        mode: nextMode,
+        timeLeft: duration,
+        endTime: null,
+        sessionTime: 0,
+        isRunning: false,
+      }));
+      
+      hasNotifiedRef.current = false;
+    }, 1500);
   }, [state.mode, state.sessionTime, updateStats, disableWakeLock, loadStats]);
 
+  // Main timer interval
   useEffect(() => {
     if (!state.isRunning || !mounted) return;
 
-    const interval = setInterval(() => {
-      if (!state.endTime) return;
+    // Clear any existing interval
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
 
-      const remaining = Math.max(0, Math.round((state.endTime - Date.now()) / 1000));
-      
-      if (remaining === 0) {
-        clearInterval(interval);
-        handleTimerComplete();
-        const nextMode = state.mode === "work" ? "break" : "work";
-        const duration = nextMode === "work" ? WORK_DURATION : BREAK_DURATION;
-        setState(prev => ({
+    enableWakeLock();
+
+    intervalRef.current = setInterval(() => {
+      setState(prev => {
+        if (!prev.endTime) return prev;
+        
+        const remaining = Math.max(0, Math.round((prev.endTime - Date.now()) / 1000));
+        
+        if (remaining === 0) {
+          // Timer complete - trigger notification
+          clearInterval(intervalRef.current!);
+          intervalRef.current = null;
+          
+          // Use setTimeout to avoid state update during render
+          setTimeout(() => {
+            handleTimerComplete();
+          }, 0);
+          
+          return {
+            ...prev,
+            timeLeft: 0,
+            isRunning: false,
+          };
+        }
+        
+        return {
           ...prev,
-          mode: nextMode,
-          timeLeft: duration,
-          endTime: Date.now() + duration * 1000,
-          sessionTime: 0,
-          isRunning: false,
-        }));
-        disableWakeLock();
-      } else {
-        setState(prev => ({ 
-          ...prev, 
           timeLeft: remaining,
-          sessionTime: prev.mode === "work" ? prev.sessionTime + SESSION_INCREMENT : prev.sessionTime 
-        }));
-      }
+          sessionTime: prev.mode === "work" ? prev.sessionTime + SESSION_INCREMENT : prev.sessionTime,
+        };
+      });
     }, SESSION_UPDATE_INTERVAL);
 
-    return () => clearInterval(interval);
-  }, [state.isRunning, state.endTime, state.mode, handleTimerComplete, mounted, disableWakeLock]);
+    // Handle visibility change - reacquire wake lock when tab becomes visible
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === "visible" && state.isRunning) {
+        await enableWakeLock();
+        
+        // Recalculate remaining time in case tab was hidden
+        setState(prev => {
+          if (!prev.endTime) return prev;
+          const remaining = Math.max(0, Math.round((prev.endTime - Date.now()) / 1000));
+          if (remaining === 0) {
+            clearInterval(intervalRef.current!);
+            intervalRef.current = null;
+            setTimeout(() => handleTimerComplete(), 0);
+            return { ...prev, timeLeft: 0, isRunning: false };
+          }
+          return { ...prev, timeLeft: remaining };
+        });
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [state.isRunning, state.endTime, state.mode, handleTimerComplete, mounted, enableWakeLock]);
 
   const toggleTimer = useCallback(async () => {
     if (!state.isRunning) {
+      // Starting timer - request fresh permission each time
       const permission = await requestNotificationPermission();
       console.log("Notification permission:", permission);
+      
       await enableWakeLock();
-      setState(prev => ({ ...prev, isRunning: true, endTime: Date.now() + prev.timeLeft * 1000 }));
+      
+      setState(prev => ({
+        ...prev,
+        isRunning: true,
+        endTime: Date.now() + prev.timeLeft * 1000,
+      }));
     } else {
+      // Pausing timer
       disableWakeLock();
-      setState(prev => ({ ...prev, isRunning: false, endTime: null }));
+      setState(prev => ({
+        ...prev,
+        isRunning: false,
+        endTime: null,
+      }));
     }
   }, [state.isRunning, enableWakeLock, disableWakeLock]);
 
   const resetTimer = useCallback(() => {
     disableWakeLock();
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    hasNotifiedRef.current = false;
     setState(DEFAULT_STATE);
   }, [disableWakeLock]);
 
   const setMode = useCallback((mode: Mode) => {
     disableWakeLock();
-    setState({ ...DEFAULT_STATE, mode, timeLeft: mode === "work" ? WORK_DURATION : BREAK_DURATION });
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    hasNotifiedRef.current = false;
+    setState({
+      ...DEFAULT_STATE,
+      mode,
+      timeLeft: mode === "work" ? WORK_DURATION : BREAK_DURATION,
+    });
   }, [disableWakeLock]);
 
   const minutes = Math.floor(state.timeLeft / 60);
