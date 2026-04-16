@@ -1,6 +1,23 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState, useRef } from "react";
+import {
+  Bell,
+  BellRing,
+  ChartNoAxesCombined,
+  CheckSquare,
+  ChevronRight,
+  Home,
+  Menu,
+  Palette,
+  Settings,
+  ShieldBan,
+  Siren,
+  Sparkles,
+  Trophy,
+  Waves,
+  X,
+} from "lucide-react";
 import PomodoroTimer from "./components/PomodoroTimer";
 import TaskList from "./components/TaskList";
 import AmbientSounds from "./components/AmbientSounds";
@@ -13,75 +30,271 @@ import { getAppName } from "./context/TimerContext";
 
 type Page = "home" | "tasks" | "sounds" | "blocker" | "rewards" | "theme" | "emergency" | "analytics";
 
+const STORAGE_KEY_INTERVAL = "yaverfx-task-notify-hours";
+const STORAGE_KEY_TASKS = "yaverfx-tasks";
+
 const MENU_ITEMS = [
-  { id: "home", icon: "🏠", label: "Ana Ekran" },
-  { id: "tasks", icon: "✅", label: "Görevler" },
-  { id: "sounds", icon: "🎵", label: "Odak Sesleri" },
-  { id: "blocker", icon: "🚫", label: "Engelleyici" },
-  { id: "rewards", icon: "🏆", label: "Başarılar" },
-  { id: "theme", icon: "🎨", label: "Tema Seç" },
-  { id: "emergency", icon: "🛑", label: "Acil Durakla" },
-  { id: "analytics", icon: "📊", label: "Analitik" },
+  { id: "home", icon: Home, label: "Ana Ekran", detail: "Odak oturumu" },
+  { id: "tasks", icon: CheckSquare, label: "Görevler", detail: "Planlarını sırala" },
+  { id: "sounds", icon: Waves, label: "Sesler", detail: "Ortam katmanları" },
+  { id: "blocker", icon: ShieldBan, label: "Engelleyici", detail: "Dikkat dağıtıcıları kapat" },
+  { id: "rewards", icon: Trophy, label: "Ödüller", detail: "İlerleme ve puanlar" },
+  { id: "theme", icon: Palette, label: "Tema", detail: "Görünümü değiştir" },
+  { id: "emergency", icon: Siren, label: "Acil Durakla", detail: "Kısa nefes arası" },
+  { id: "analytics", icon: ChartNoAxesCombined, label: "Analitik", detail: "Ritmini izle" },
 ] as const;
 
-export default function Home() {
+interface Task {
+  id: string;
+  text: string;
+  completed: boolean;
+  emoji?: string;
+  time?: string;
+  date?: string;
+  note?: string;
+}
+
+export default function HomePage() {
   const [page, setPage] = useState<Page>("home");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [appName, setAppName] = useState(getAppName());
+  const [featuredTask, setFeaturedTask] = useState<Task | null>(null);
+  const [notifyHours, setNotifyHours] = useState(12);
+  const [showSettings, setShowSettings] = useState(false);
+  const [tasksLoaded, setTasksLoaded] = useState(false);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const lastPickRef = useRef<number>(0);
 
+  // Load tasks from localStorage
   useEffect(() => {
-    const updateName = () => setAppName(getAppName());
-    updateName();
-    window.addEventListener("yaverfx-name-update", updateName);
-    return () => window.removeEventListener("yaverfx-name-update", updateName);
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY_TASKS);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          setTasks(parsed.filter((t: Task) => typeof t.id === "string" && typeof t.text === "string" && typeof t.completed === "boolean"));
+        }
+      }
+    } catch {}
+    setTasksLoaded(true);
   }, []);
+
+  // Load notify hours setting
+  useEffect(() => {
+    const stored = localStorage.getItem(STORAGE_KEY_INTERVAL);
+    if (stored) {
+      const hours = parseFloat(stored);
+      if (!isNaN(hours) && hours > 0) setNotifyHours(hours);
+    }
+  }, []);
+
+  // Pick a random incomplete task
+  const pickRandomTask = () => {
+    const incomplete = tasks.filter((t) => !t.completed);
+    if (incomplete.length === 0) {
+      setFeaturedTask(null);
+      return;
+    }
+    const pick = incomplete[Math.floor(Math.random() * incomplete.length)];
+    setFeaturedTask(pick);
+    lastPickRef.current = Date.now();
+  };
+
+  // Main timer: check every minute, force-pick when interval is reached
+  useEffect(() => {
+    if (!tasksLoaded) return;
+
+    // Pick immediately if we have tasks and last pick was > notifyHours ago (or never)
+    const storedLastPick = localStorage.getItem("yaverfx-task-last-pick");
+    const lastPick = storedLastPick ? parseInt(storedLastPick) : 0;
+    const intervalMs = notifyHours * 60 * 60 * 1000;
+
+    if (tasks.length > 0 && (Date.now() - lastPick > intervalMs || !storedLastPick)) {
+      pickRandomTask();
+    }
+
+    // Tick every minute to re-evaluate
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const msSinceLastPick = now - lastPickRef.current;
+      if (msSinceLastPick >= intervalMs && tasks.filter((t) => !t.completed).length > 0) {
+        pickRandomTask();
+      }
+    }, 60_000);
+
+    return () => clearInterval(interval);
+  }, [tasksLoaded, notifyHours, tasks]);
+
+  // When tasks change, if we have a featured task that got completed, clear it
+  useEffect(() => {
+    if (featuredTask) {
+      const stillExists = tasks.find((t) => t.id === featuredTask.id);
+      if (!stillExists || stillExists.completed) {
+        setFeaturedTask(null);
+      }
+    }
+  }, [tasks]);
+
+  const saveNotifyHours = (hours: number) => {
+    if (hours <= 0) return;
+    setNotifyHours(hours);
+    localStorage.setItem(STORAGE_KEY_INTERVAL, String(hours));
+    setShowSettings(false);
+  };
+
+  const currentItem = MENU_ITEMS.find((item) => item.id === page) ?? MENU_ITEMS[0];
 
   const renderPage = () => {
     switch (page) {
-      case "home": return <PomodoroTimer />;
-      case "tasks": return <div className="page-container animate-in"><h2 className="page-title">Görevler</h2><TaskList /></div>;
-      case "sounds": return <div className="page-container animate-in"><h2 className="page-title">Sesler</h2><AmbientSounds /></div>;
-      case "blocker": return <div className="page-container animate-in"><h2 className="page-title">Engelleyici</h2><SiteBlocker /></div>;
-      case "rewards": return <div className="page-container animate-in"><h2 className="page-title">Ödüller</h2><RewardSystem /></div>;
-      case "theme": return <div className="page-container animate-in"><h2 className="page-title">Görünüm</h2><ThemeSelector /></div>;
-      case "emergency": return <div className="page-container animate-in"><h2 className="page-title">Acil Duraklama</h2><EmergencyTimer /></div>;
-      case "analytics": return <div className="page-container animate-in"><h2 className="page-title">Analitik</h2><Analytics /></div>;
+      case "home":
+        return <PomodoroTimer />;
+      case "tasks":
+        return <div className="page-container animate-in"><TaskList onTasksChange={setTasks} /></div>;
+      case "sounds":
+        return <div className="page-container animate-in"><AmbientSounds /></div>;
+      case "blocker":
+        return <div className="page-container animate-in"><SiteBlocker /></div>;
+      case "rewards":
+        return <div className="page-container animate-in"><RewardSystem /></div>;
+      case "theme":
+        return <div className="page-container animate-in"><ThemeSelector /></div>;
+      case "emergency":
+        return <div className="page-container animate-in"><EmergencyTimer /></div>;
+      case "analytics":
+        return <div className="page-container animate-in"><Analytics /></div>;
     }
   };
 
   return (
-    <div className="app">
-      <header className="header">
-        <div className="brand">
-          <span className="logo-dot"></span>
-          <h1>{appName}</h1>
-        </div>
-      </header>
-
-      <main className="main-stage">
-        {renderPage()}
-      </main>
-
-      <div className={`menu-overlay ${isMenuOpen ? "active" : ""}`} onClick={() => setIsMenuOpen(false)}>
-        <div className="menu-content" onClick={e => e.stopPropagation()}>
-          <div className="menu-grid">
-            {MENU_ITEMS.map(item => (
-              <button 
-                key={item.id} 
-                className={`menu-item ${page === item.id ? "active" : ""}`}
-                onClick={() => { setPage(item.id as Page); setIsMenuOpen(false); }}
-              >
-                <span className="menu-icon">{item.icon}</span>
-                <span className="menu-label">{item.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
+    <div className="app-shell">
+      <div className="ambient-mesh" aria-hidden="true">
+        <span className="mesh-orb orb-a"></span>
+        <span className="mesh-orb orb-b"></span>
+        <span className="mesh-orb orb-c"></span>
       </div>
 
-      <button className={`fab-main ${isMenuOpen ? "open" : ""}`} onClick={() => setIsMenuOpen(!isMenuOpen)}>
-        <span className="fab-icon">{isMenuOpen ? "✕" : "☰"}</span>
-      </button>
+      <div className="app">
+        <header className="top-bar">
+          <div className="top-bar-copy">
+            <span className="top-bar-kicker">Focus OS</span>
+            <h1>{appName}</h1>
+          </div>
+
+          <div className="top-bar-chip">
+            <Sparkles size={14} />
+            <span>{currentItem.label}</span>
+          </div>
+        </header>
+
+        <main className="main-stage">
+          <section className="content-shell">
+            {page !== "home" && (
+              <div className="page-intro animate-in">
+                <span className="page-eyebrow">{currentItem.label}</span>
+                <p className="page-description">{currentItem.detail}</p>
+              </div>
+            )}
+            {renderPage()}
+          </section>
+        </main>
+
+        {/* Hamburger menu overlay */}
+        <div
+          className={`menu-overlay ${isMenuOpen ? "active" : ""}`}
+          onClick={() => { setIsMenuOpen(false); setShowSettings(false); }}
+          aria-hidden={!isMenuOpen}
+        >
+          <div className="menu-sheet" onClick={(event) => event.stopPropagation()}>
+            <div className="menu-sheet-handle"></div>
+            <div className="menu-sheet-header">
+              <div>
+                <span className="page-eyebrow">Gezinme</span>
+                <h2>YaverFX Alanları</h2>
+              </div>
+              {/* Settings gear in menu header */}
+              <button
+                className="menu-settings-btn"
+                onClick={(e) => { e.stopPropagation(); setShowSettings(!showSettings); }}
+                aria-label="Bildirim ayarları"
+              >
+                <Settings size={18} />
+              </button>
+            </div>
+
+            {/* Notification settings panel */}
+            {showSettings && (
+              <div className="notify-settings-panel animate-in">
+                <div className="notify-settings-row">
+                  <BellRing size={15} />
+                  <span>Bildirim aralığı</span>
+                </div>
+                <div className="notify-hours-options">
+                  {[1, 3, 6, 12, 24].map((h) => (
+                    <button
+                      key={h}
+                      className={`notify-hour-btn ${notifyHours === h ? "active" : ""}`}
+                      onClick={() => saveNotifyHours(h)}
+                    >
+                      {h}h
+                    </button>
+                  ))}
+                </div>
+                <p className="notify-settings-hint">
+                  Her {notifyHours} saatte bir rastgele görev gösterilir
+                </p>
+              </div>
+            )}
+
+            {/* Featured task card — shown at top of menu when set */}
+            {featuredTask && (
+              <div className="featured-task-card animate-in" onClick={() => { setPage("tasks"); setIsMenuOpen(false); setFeaturedTask(null); }}>
+                <div className="featured-task-emoji">{featuredTask.emoji || "📝"}</div>
+                <div className="featured-task-content">
+                  <span className="featured-task-label">Sırada</span>
+                  <span className="featured-task-text">{featuredTask.text}</span>
+                </div>
+                <ChevronRight size={16} className="featured-task-arrow" />
+              </div>
+            )}
+
+            <div className="menu-grid">
+              {MENU_ITEMS.map((item) => {
+                const Icon = item.icon;
+                const isTasks = item.id === "tasks";
+                const showBadge = isTasks && featuredTask !== null;
+                return (
+                  <button
+                    key={item.id}
+                    className={`menu-item ${page === item.id ? "active" : ""}`}
+                    onClick={() => {
+                      setPage(item.id as Page);
+                      setIsMenuOpen(false);
+                      setShowSettings(false);
+                    }}
+                  >
+                    <span className="menu-icon">
+                      <Icon size={22} />
+                      {showBadge && <span className="task-pulse-badge" />}
+                    </span>
+                    <span className="menu-label">{item.label}</span>
+                    <span className="menu-detail">{item.detail}</span>
+                    {showBadge && <span className="task-pulse-dot" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        <button
+          className={`fab-main ${isMenuOpen ? "open" : ""}`}
+          onClick={() => { setIsMenuOpen((prev) => !prev); setShowSettings(false); }}
+          aria-label={isMenuOpen ? "Menüyü kapat" : "Menüyü aç"}
+        >
+          {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          {!isMenuOpen && featuredTask && <span className="fab-pulse-ring" />}
+        </button>
+      </div>
     </div>
   );
 }

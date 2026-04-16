@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useTimer, getAppName } from "../context/TimerContext";
+import { CalendarDays, Check, ChevronDown, ChevronUp, Plus, StickyNote, Trash2 } from "lucide-react";
+import { useTimer } from "../context/TimerContext";
 import { playTaskSound, sendTaskNotification } from "../utils/notifications";
 
 interface Task {
@@ -119,7 +120,11 @@ function scheduleUpcomingTasks(tasks: Task[]): NodeJS.Timeout | null {
   return null;
 }
 
-export default function TaskList() {
+interface TaskListProps {
+  onTasksChange?: (tasks: Task[]) => void;
+}
+
+export default function TaskList({ onTasksChange }: TaskListProps) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [input, setInput] = useState("");
@@ -232,6 +237,7 @@ export default function TaskList() {
     setTasks(prev => {
       const updated = [newTask, ...prev];
       saveTasks(updated);
+      onTasksChange?.(updated);
       
       // Schedule notification for new task
       if (scheduledTimeoutRef.current) {
@@ -260,6 +266,7 @@ export default function TaskList() {
       }
       
       saveTasks(updated);
+      onTasksChange?.(updated);
       return updated;
     });
   }, [updateStats]);
@@ -268,6 +275,7 @@ export default function TaskList() {
     setTasks(prev => {
       const updated = prev.filter(t => t.id !== id);
       saveTasks(updated);
+      onTasksChange?.(updated);
       return updated;
     });
   }, []);
@@ -276,110 +284,133 @@ export default function TaskList() {
 
   return (
     <div className="task-wrapper animate-in">
-      <div className="task-input-container">
-        <div className="task-input-main">
-          <button className="emoji-select-btn" onClick={() => setShowDetails(!showDetails)}>
-            {emoji}
-          </button>
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && addTaskCallback()}
-            placeholder="Yeni ne başarmak istersin?"
-            className="task-input"
-          />
-          <button onClick={() => setShowDetails(!showDetails)} className="task-expand-btn">
-            {showDetails ? "▲" : "▼"}
-          </button>
-          <button onClick={addTaskCallback} className="task-add-btn">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-          </button>
+      <div className="task-panel glass-card">
+        <div className="task-panel-header">
+          <div>
+            <span className="page-eyebrow">Görev Panosu</span>
+            <h2>Bugün neyi bitireceksin?</h2>
+          </div>
+          <div className="task-stats-chip">{completedCount} / {tasks.length || 0} tamamlandı</div>
         </div>
 
-        {showDetails && (
-          <div className="task-details-form animate-in">
-            <div className="emoji-picker" role="listbox" tabIndex={0} ref={emojiPickerRef} onKeyDown={handleEmojiKeyDown}>
-              <div className="emoji-scroll">
-                {EMOJIS.map(e => (
-                  <button 
-                    key={e} 
-                    role="option"
-                    aria-selected={emoji === e}
-                    onClick={() => setEmoji(e)} 
-                    className={`emoji-btn ${emoji === e ? 'active' : ''}`}
-                  >{e}</button>
-                ))}
-              </div>
-            </div>
-            <div className="task-datetime-row">
-              <input type="date" value={date} onChange={e => setDate(e.target.value)} className="task-detail-input" />
-              <input type="time" value={time} onChange={e => setTime(e.target.value)} className="task-detail-input" />
-            </div>
-            <textarea 
-              value={note} 
-              onChange={e => setNote(e.target.value)} 
-              placeholder="Görev için notlar..." 
-              className="task-detail-input task-note-input"
-              rows={2}
+        <div className="task-input-container">
+          <div className="task-input-main">
+            <button className="emoji-select-btn" onClick={() => setShowDetails(!showDetails)} aria-label="Emoji seç">
+              {emoji}
+            </button>
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && addTaskCallback()}
+              placeholder="Yeni ne başarmak istersin?"
+              className="task-input"
             />
+            <button onClick={() => setShowDetails(!showDetails)} className="task-expand-btn" aria-label="Detayları aç">
+              {showDetails ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            </button>
+            <button onClick={addTaskCallback} className="task-add-btn" aria-label="Görev ekle">
+              <Plus size={18} />
+            </button>
           </div>
-        )}
+
+          {showDetails && (
+            <div className="task-details-form animate-in">
+              <div className="emoji-picker" role="listbox" tabIndex={0} ref={emojiPickerRef} onKeyDown={handleEmojiKeyDown}>
+                <div className="section-inline-label">
+                  <span>Durum simgesi</span>
+                </div>
+                <div className="emoji-scroll">
+                  {EMOJIS.map((currentEmoji) => (
+                    <button
+                      key={currentEmoji}
+                      role="option"
+                      aria-selected={emoji === currentEmoji}
+                      onClick={() => setEmoji(currentEmoji)}
+                      className={`emoji-btn ${emoji === currentEmoji ? "active" : ""}`}
+                    >
+                      {currentEmoji}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="task-datetime-row">
+                <label className="task-field glass-inset">
+                  <CalendarDays size={16} />
+                  <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="task-detail-input" />
+                </label>
+                <label className="task-field glass-inset">
+                  <CalendarDays size={16} />
+                  <input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="task-detail-input" />
+                </label>
+              </div>
+
+              <label className="task-note-field glass-inset">
+                <StickyNote size={16} />
+                <textarea
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder="Görev için notlar..."
+                  className="task-detail-input task-note-input"
+                  rows={2}
+                />
+              </label>
+            </div>
+          )}
+        </div>
       </div>
 
       {tasks.length > 0 && (
-        <div className="task-stats-bar">
+        <div className="task-stats-bar glass-card">
           <span className="reward-label">{completedCount} / {tasks.length} TAMAMLANDI</span>
         </div>
       )}
 
       <div className="task-list">
         {!isLoaded && (
-          <div className="task-empty">
-            <span style={{ fontSize: '40px', marginBottom: '12px', display: 'block' }}>✨</span>
+          <div className="task-empty glass-card">
+            <div className="empty-icon">⋯</div>
             <p className="menu-label">YÜKLENİYOR...</p>
           </div>
         )}
         {isLoaded && tasks.length === 0 && (
-          <div className="task-empty">
-            <span style={{ fontSize: '40px', marginBottom: '12px', display: 'block' }}>✨</span>
+          <div className="task-empty glass-card">
+            <div className="empty-icon">+</div>
             <p className="menu-label">LİSTEYİ OLUŞTURMAYA BAŞLA</p>
           </div>
         )}
         {tasks.map((task) => (
-          <div key={task.id} className={`task-item ${task.completed ? "completed" : ""}`}>
+          <div key={task.id} className={`task-item glass-card ${task.completed ? "completed" : ""}`}>
             <button
               onClick={() => toggleTask(task.id)}
               className={`task-checkbox ${task.completed ? "checked" : ""}`}
+              aria-label={task.completed ? "Görevi geri al" : "Görevi tamamla"}
             >
-              {task.completed && (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--btn-text)" strokeWidth="4">
-                  <path d="M20 6L9 17l-5-5" />
-                </svg>
-              )}
+              {task.completed && <Check size={15} strokeWidth={3} />}
             </button>
+
             <div className="task-content">
               <div className="task-header-row">
                 <span className="task-emoji">{task.emoji || "📝"}</span>
                 <span className="task-text">{task.text}</span>
               </div>
+
               {(task.date || task.time || task.note) && (
                 <div className="task-meta">
                   {(task.date || task.time) && (
                     <span className="task-datetime-badge">
-                      🗓 {task.date} {task.time}
+                      <CalendarDays size={14} />
+                      <span>{task.date} {task.time}</span>
                     </span>
                   )}
                   {task.note && <p className="task-note-text">{task.note}</p>}
                 </div>
               )}
             </div>
-            <button onClick={() => deleteTask(task.id)} className="task-delete-btn">
-              <svg width="20" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" strokeWidth="2">
-                <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
-              </svg>
+
+            <button onClick={() => deleteTask(task.id)} className="task-delete-btn" aria-label="Görevi sil">
+              <Trash2 size={18} />
             </button>
           </div>
         ))}
