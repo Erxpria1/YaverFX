@@ -4,6 +4,27 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import NoSleep from "nosleep.js";
 import { playWorkCompleteSound, playBreakCompleteSound, requestNotificationPermission, sendBrowserNotification } from "../utils/notifications";
 
+// Ubuntu screen block — timer çalışırken ekran karartmayı kapat
+const enableScreenBlock = async () => {
+  try {
+    await fetch("/api/screen-block", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "enable" }),
+    });
+  } catch { /* sessiz */ }
+};
+
+const disableScreenBlock = async () => {
+  try {
+    await fetch("/api/screen-block", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "disable" }),
+    });
+  } catch { /* sessiz */ }
+};
+
 const WORK_DURATION = 25 * 60;
 const BREAK_DURATION = 5 * 60;
 const BASE_POINTS = 10;
@@ -178,9 +199,12 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
     } catch (err) {
       console.warn("NoSleep enable failed:", err);
     }
+
+    // Ubuntu: ekran karartmayı kapat (server-side xset)
+    await enableScreenBlock();
   }, []);
 
-  const disableWakeLock = useCallback(() => {
+  const disableWakeLock = useCallback(async () => {
     if (wakeLock.current) {
       wakeLock.current.release().catch(() => {});
       wakeLock.current = null;
@@ -189,6 +213,8 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
       noSleep.current.disable();
       noSleep.current = null;
     }
+    // Ubuntu: ekran karartmayı yeniden aktif et
+    await disableScreenBlock();
   }, []);
 
   const handleTimerComplete = useCallback(async () => {
