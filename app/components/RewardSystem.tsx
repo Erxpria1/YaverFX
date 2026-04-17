@@ -12,6 +12,16 @@ interface Stats {
 
 const POINTS_PER_LEVEL = 100;
 
+// Yoldaş figürleri (0-5 arası)
+const COMPANIONS = [
+  { level: 1, name: "Çırak Yaver", image: "/characters/char_0.png" },
+  { level: 2, name: "Gözlemci", image: "/characters/char_1.png" },
+  { level: 3, name: "Odak Ustası", image: "/characters/char_2.png" },
+  { level: 4, name: "Zaman Bükücü", image: "/characters/char_3.png" },
+  { level: 5, name: "Elit Yaver", image: "/characters/char_4.png" },
+  { level: 6, name: "Efsanevi", image: "/characters/char_5.png" },
+];
+
 export default function RewardSystem() {
   const [stats, setStats] = useState<Stats>({ focusTime: 0, tasksDone: 0, streak: 0, points: 0 });
   const [appName, setAppNameState] = useState(getAppName());
@@ -47,11 +57,16 @@ export default function RewardSystem() {
 
   const level = Math.floor(stats.points / POINTS_PER_LEVEL) + 1;
   const progress = (stats.points % POINTS_PER_LEVEL);
+  
+  // Bulunduğun seviyeye uygun en yüksek yoldaşı seç
+  const currentCompanion = COMPANIONS.reduce((prev, current) => 
+    (level >= current.level ? current : prev), COMPANIONS[0]
+  );
 
   return (
-    <>
+    <div className="rewards-layout" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       {/* Name Edit Button */}
-      <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'center' }}>
+      <div style={{ display: 'flex', justifyContent: 'center' }}>
         <button 
           onClick={() => { setTempName(appName); setShowNameModal(true); }}
           style={{ 
@@ -59,15 +74,29 @@ export default function RewardSystem() {
             padding: '8px 16px', 
             borderRadius: 'var(--radius-sm)',
             fontSize: '12px',
-            color: 'var(--text-secondary)'
+            color: 'var(--text-secondary)',
+            fontWeight: 'bold'
           }}
         >
-          📝 İsim Değiştir
+          📝 İsim Değiştir ({appName})
         </button>
       </div>
 
-      <div className="reward-box animate-in">
-        <div className="reward-top">
+      {/* Main Reward Card */}
+      <div className="reward-box animate-in" style={{ position: 'relative', overflow: 'hidden' }}>
+        {/* Aktif Yoldaş Görseli */}
+        <div style={{ 
+          position: 'absolute', 
+          right: '-20px', 
+          bottom: '-20px', 
+          opacity: 0.15, 
+          pointerEvents: 'none',
+          transform: 'scale(1.5)'
+        }}>
+          <img src={currentCompanion.image} alt="Background Companion" width="200" height="200" style={{ imageRendering: 'pixelated' }} />
+        </div>
+
+        <div className="reward-top" style={{ position: 'relative', zIndex: 1 }}>
           <div className="reward-lvl">
             <span className="reward-val">{level}</span>
             <span className="reward-lbl">SEVİYE</span>
@@ -78,11 +107,11 @@ export default function RewardSystem() {
           </div>
         </div>
         
-        <div className="reward-bar">
+        <div className="reward-bar" style={{ position: 'relative', zIndex: 1 }}>
           <div className="reward-fill" style={{ width: `${progress}%` }}></div>
         </div>
 
-        <div className="reward-stats">
+        <div className="reward-stats" style={{ position: 'relative', zIndex: 1 }}>
           <div className="reward-stat">
             <span className="reward-icon">🔥</span>
             <div className="reward-num">{stats.streak}</div>
@@ -98,6 +127,73 @@ export default function RewardSystem() {
             <div className="reward-num">{stats.tasksDone}</div>
             <div className="reward-label">GÖREV BİTTİ</div>
           </div>
+        </div>
+      </div>
+
+      {/* Companions Collection */}
+      <div className="companions-collection animate-in" style={{ animationDelay: '0.1s' }}>
+        <h3 style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '16px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+          Takım Arkadaşları
+        </h3>
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))', 
+          gap: '12px' 
+        }}>
+          {COMPANIONS.map((comp) => {
+            const isUnlocked = level >= comp.level;
+            const isCurrent = comp.level === currentCompanion.level;
+            
+            return (
+              <div 
+                key={comp.level}
+                style={{
+                  background: isCurrent ? 'var(--surface-light)' : 'var(--surface)',
+                  border: isCurrent ? '1.5px solid var(--accent)' : '1px solid var(--border-light)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '12px 8px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '8px',
+                  opacity: isUnlocked ? 1 : 0.4,
+                  filter: isUnlocked ? 'none' : 'grayscale(100%)',
+                  position: 'relative'
+                }}
+              >
+                {isCurrent && (
+                  <span style={{ 
+                    position: 'absolute', 
+                    top: '-6px', 
+                    right: '-6px', 
+                    background: 'var(--accent)', 
+                    color: 'var(--bg)', 
+                    fontSize: '10px', 
+                    padding: '2px 6px', 
+                    borderRadius: '10px',
+                    fontWeight: 'bold'
+                  }}>
+                    Aktif
+                  </span>
+                )}
+                <img 
+                  src={comp.image} 
+                  alt={comp.name} 
+                  width="48" 
+                  height="48" 
+                  style={{ imageRendering: 'pixelated' }} 
+                />
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '10px', fontWeight: 'bold', color: 'var(--text)' }}>
+                    {isUnlocked ? comp.name : '???'}
+                  </div>
+                  <div style={{ fontSize: '9px', color: 'var(--text-secondary)' }}>
+                    Sv. {comp.level}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -119,7 +215,7 @@ export default function RewardSystem() {
           <div 
             style={{
               background: 'var(--surface)',
-              border: 'var(--border-light)',
+              border: '1px solid var(--border-light)',
               borderRadius: 'var(--radius-lg)',
               padding: '24px',
               width: '100%',
@@ -138,7 +234,7 @@ export default function RewardSystem() {
                 padding: '12px',
                 borderRadius: 'var(--radius-sm)',
                 background: 'var(--bg)',
-                border: 'var(--border-light)',
+                border: '1px solid var(--border-light)',
                 color: 'var(--text)',
                 fontSize: '16px',
                 marginBottom: '16px'
@@ -155,7 +251,8 @@ export default function RewardSystem() {
                   borderRadius: 'var(--radius-sm)',
                   background: 'var(--surface-light)',
                   color: 'var(--text-secondary)',
-                  fontWeight: 'bold'
+                  fontWeight: 'bold',
+                  border: 'none'
                 }}
               >
                 İptal
@@ -167,8 +264,9 @@ export default function RewardSystem() {
                   padding: '12px',
                   borderRadius: 'var(--radius-sm)',
                   background: 'var(--accent)',
-                  color: 'var(--btn-text)',
-                  fontWeight: 'bold'
+                  color: 'var(--bg)',
+                  fontWeight: 'bold',
+                  border: 'none'
                 }}
               >
                 Kaydet
@@ -177,6 +275,6 @@ export default function RewardSystem() {
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }
