@@ -42,6 +42,16 @@ const MENU_ITEMS = [
   { id: "analytics", icon: ChartNoAxesCombined, label: "Analitik", detail: "Ritmini izle" },
 ] as const;
 
+// Yoldaş figürleri
+const COMPANIONS = [
+  { level: 1, image: "/characters/char_0.png" },
+  { level: 2, image: "/characters/char_1.png" },
+  { level: 3, image: "/characters/char_2.png" },
+  { level: 4, image: "/characters/char_3.png" },
+  { level: 5, image: "/characters/char_4.png" },
+  { level: 6, image: "/characters/char_5.png" },
+];
+
 interface Task {
   id: string;
   text: string;
@@ -61,10 +71,28 @@ export default function HomePage() {
   const [showSettings, setShowSettings] = useState(false);
   const [tasksLoaded, setTasksLoaded] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [points, setPoints] = useState(0);
   const lastPickRef = useRef<number>(0);
 
-  // Load tasks from localStorage
+  // Load stats to determine companion level
   useEffect(() => {
+    const updateStats = () => {
+      if (typeof window === "undefined") return;
+      const stored = localStorage.getItem("yaverfx-stats");
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          setPoints(Number(parsed.points) || 0);
+        } catch {}
+      }
+    };
+    updateStats();
+    window.addEventListener("yaverfx-stats-update", updateStats);
+    return () => window.removeEventListener("yaverfx-stats-update", updateStats);
+  }, []);
+
+  // Load tasks from localStorage
+  ...
     try {
       const stored = localStorage.getItem(STORAGE_KEY_TASKS);
       if (stored) {
@@ -139,6 +167,11 @@ export default function HomePage() {
     localStorage.setItem(STORAGE_KEY_INTERVAL, String(hours));
     setShowSettings(false);
   };
+
+  const level = Math.floor(points / 100) + 1;
+  const currentCompanion = COMPANIONS.reduce((prev, current) => 
+    (level >= current.level ? current : prev), COMPANIONS[0]
+  );
 
   const currentItem = MENU_ITEMS.find((item) => item.id === page) ?? MENU_ITEMS[0];
 
@@ -243,15 +276,18 @@ export default function HomePage() {
 
             {/* Featured task card — shown at top of menu when set */}
             {featuredTask && (
-              <div className="featured-task-card animate-in" onClick={() => { setPage("tasks"); setIsMenuOpen(false); }}>
-                <div className="featured-task-emoji">{featuredTask.emoji || "📝"}</div>
-                <div className="featured-task-content">
-                  <span className="featured-task-label">Sırada</span>
-                  <span className="featured-task-text">{featuredTask.text}</span>
-                </div>
-                <ChevronRight size={16} className="featured-task-arrow" />
-              </div>
-            )}
+                        <div className="featured-task-card animate-in" onClick={() => { setPage("tasks"); setIsMenuOpen(false); }}>
+                          <div className="featured-task-avatar">
+                            <img src={currentCompanion.image} alt="Yaver Agent" width="40" height="40" style={{ imageRendering: 'pixelated' }} />
+                            <div className="avatar-pulse" />
+                          </div>
+                          <div className="featured-task-content">
+                            <span className="featured-task-label">Sırada</span>
+                            <span className="featured-task-text">{featuredTask.text}</span>
+                          </div>
+                          <ChevronRight size={16} className="featured-task-arrow" />
+                        </div>
+                      )}
 
             <div className="menu-grid">
               {MENU_ITEMS.map((item) => {
