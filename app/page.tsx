@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useRef } from "react";
 import {
-  Bell,
   BellRing,
   ChartNoAxesCombined,
   CheckSquare,
@@ -11,7 +10,6 @@ import {
   Menu,
   Palette,
   Settings,
-  ShieldBan,
   Siren,
   Sparkles,
   Trophy,
@@ -26,6 +24,7 @@ import ThemeSelector from "./components/ThemeSelector";
 import EmergencyTimer from "./components/EmergencyTimer";
 import Analytics from "./components/Analytics";
 import { getAppName } from "./context/TimerContext";
+import { calculateLevel, getCompanionForLevel } from "./utils/stats";
 
 type Page = "home" | "tasks" | "sounds" | "rewards" | "theme" | "emergency" | "analytics";
 
@@ -41,16 +40,6 @@ const MENU_ITEMS = [
   { id: "emergency", icon: Siren, label: "Acil Durakla", detail: "Kısa nefes arası" },
   { id: "analytics", icon: ChartNoAxesCombined, label: "Analitik", detail: "Ritmini izle" },
 ] as const;
-
-// Yoldaş figürleri
-const COMPANIONS = [
-  { level: 1, image: "/characters/char_0.png" },
-  { level: 2, image: "/characters/char_1.png" },
-  { level: 3, image: "/characters/char_2.png" },
-  { level: 4, image: "/characters/char_3.png" },
-  { level: 5, image: "/characters/char_4.png" },
-  { level: 6, image: "/characters/char_5.png" },
-];
 
 interface Task {
   id: string;
@@ -92,7 +81,7 @@ export default function HomePage() {
   }, []);
 
   // Load tasks from localStorage
-  ...
+  useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY_TASKS);
       if (stored) {
@@ -124,13 +113,13 @@ export default function HomePage() {
     const pick = incomplete[Math.floor(Math.random() * incomplete.length)];
     setFeaturedTask(pick);
     lastPickRef.current = Date.now();
+    localStorage.setItem("yaverfx-task-last-pick", String(Date.now()));
   };
 
   // Main timer: check every minute, force-pick when interval is reached
   useEffect(() => {
     if (!tasksLoaded) return;
 
-    // Pick immediately if we have tasks and last pick was > notifyHours ago (or never)
     const storedLastPick = localStorage.getItem("yaverfx-task-last-pick");
     const lastPick = storedLastPick ? parseInt(storedLastPick) : 0;
     const intervalMs = notifyHours * 60 * 60 * 1000;
@@ -139,10 +128,9 @@ export default function HomePage() {
       pickRandomTask();
     }
 
-    // Tick every minute to re-evaluate
     const interval = setInterval(() => {
       const now = Date.now();
-      const msSinceLastPick = now - lastPickRef.current;
+      const msSinceLastPick = now - (lastPickRef.current || lastPick);
       if (msSinceLastPick >= intervalMs && tasks.filter((t) => !t.completed).length > 0) {
         pickRandomTask();
       }
@@ -159,7 +147,7 @@ export default function HomePage() {
         setFeaturedTask(null);
       }
     }
-  }, [tasks]);
+  }, [tasks, featuredTask]);
 
   const saveNotifyHours = (hours: number) => {
     if (hours <= 0) return;
@@ -168,10 +156,8 @@ export default function HomePage() {
     setShowSettings(false);
   };
 
-  const level = Math.floor(points / 100) + 1;
-  const currentCompanion = COMPANIONS.reduce((prev, current) => 
-    (level >= current.level ? current : prev), COMPANIONS[0]
-  );
+  const level = calculateLevel(points);
+  const currentCompanion = getCompanionForLevel(level);
 
   const currentItem = MENU_ITEMS.find((item) => item.id === page) ?? MENU_ITEMS[0];
 
@@ -227,7 +213,6 @@ export default function HomePage() {
           </section>
         </main>
 
-        {/* Hamburger menu overlay */}
         <div
           className={`menu-overlay ${isMenuOpen ? "active" : ""}`}
           onClick={() => { setIsMenuOpen(false); setShowSettings(false); }}
@@ -240,7 +225,6 @@ export default function HomePage() {
                 <span className="page-eyebrow">Gezinme</span>
                 <h2>YaverFX Alanları</h2>
               </div>
-              {/* Settings gear in menu header */}
               <button
                 className="menu-settings-btn"
                 onClick={(e) => { e.stopPropagation(); setShowSettings(!showSettings); }}
@@ -250,7 +234,6 @@ export default function HomePage() {
               </button>
             </div>
 
-            {/* Notification settings panel */}
             {showSettings && (
               <div className="notify-settings-panel animate-in">
                 <div className="notify-settings-row">
@@ -274,20 +257,19 @@ export default function HomePage() {
               </div>
             )}
 
-            {/* Featured task card — shown at top of menu when set */}
             {featuredTask && (
-                        <div className="featured-task-card animate-in" onClick={() => { setPage("tasks"); setIsMenuOpen(false); }}>
-                          <div className="featured-task-avatar">
-                            <img src={currentCompanion.image} alt="Yaver Agent" width="40" height="40" style={{ imageRendering: 'pixelated' }} />
-                            <div className="avatar-pulse" />
-                          </div>
-                          <div className="featured-task-content">
-                            <span className="featured-task-label">Sırada</span>
-                            <span className="featured-task-text">{featuredTask.text}</span>
-                          </div>
-                          <ChevronRight size={16} className="featured-task-arrow" />
-                        </div>
-                      )}
+              <div className="featured-task-card animate-in" onClick={() => { setPage("tasks"); setIsMenuOpen(false); }}>
+                <div className="featured-task-avatar">
+                  <img src={currentCompanion.image} alt="Yaver Agent" width="40" height="40" style={{ imageRendering: 'pixelated' }} />
+                  <div className="avatar-pulse" />
+                </div>
+                <div className="featured-task-content">
+                  <span className="featured-task-label">Sırada</span>
+                  <span className="featured-task-text">{featuredTask.text}</span>
+                </div>
+                <ChevronRight size={16} className="featured-task-arrow" />
+              </div>
+            )}
 
             <div className="menu-grid">
               {MENU_ITEMS.map((item) => {

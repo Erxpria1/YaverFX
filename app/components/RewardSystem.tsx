@@ -2,28 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { getAppName, setAppName } from "../context/TimerContext";
-
-interface Stats {
-  focusTime: number;
-  tasksDone: number;
-  streak: number;
-  points: number;
-}
+import { calculateLevel, getCompanionForLevel, COMPANIONS, StoredStats } from "../utils/stats";
 
 const POINTS_PER_LEVEL = 100;
 
-// Yoldaş figürleri (0-5 arası)
-const COMPANIONS = [
-  { level: 1, name: "Çırak Yaver", image: "/characters/char_0.png" },
-  { level: 2, name: "Gözlemci", image: "/characters/char_1.png" },
-  { level: 3, name: "Odak Ustası", image: "/characters/char_2.png" },
-  { level: 4, name: "Zaman Bükücü", image: "/characters/char_3.png" },
-  { level: 5, name: "Elit Yaver", image: "/characters/char_4.png" },
-  { level: 6, name: "Efsanevi", image: "/characters/char_5.png" },
-];
-
 export default function RewardSystem() {
-  const [stats, setStats] = useState<Stats>({ focusTime: 0, tasksDone: 0, streak: 0, points: 0 });
+  const [stats, setStats] = useState<StoredStats>({ focusTime: 0, tasksDone: 0, streak: 0, points: 0 });
   const [appName, setAppNameState] = useState(getAppName());
   const [showNameModal, setShowNameModal] = useState(false);
   const [tempName, setTempName] = useState(appName);
@@ -55,13 +39,11 @@ export default function RewardSystem() {
     setShowNameModal(false);
   };
 
-  const level = Math.floor(stats.points / POINTS_PER_LEVEL) + 1;
+  const level = calculateLevel(stats.points);
   const progress = (stats.points % POINTS_PER_LEVEL);
   
   // Bulunduğun seviyeye uygun en yüksek yoldaşı seç
-  const currentCompanion = COMPANIONS.reduce((prev, current) => 
-    (level >= current.level ? current : prev), COMPANIONS[0]
-  );
+  const currentCompanion = getCompanionForLevel(level);
 
   return (
     <div className="rewards-layout" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
