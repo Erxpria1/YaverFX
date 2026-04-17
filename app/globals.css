@@ -1659,14 +1659,30 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 /* ── FAB Pulse Ring ────────────────────────────────────────────────── */
 .fab-pulse-ring {
   position: absolute;
-  inset: -4px;
+  inset: -6px;
   border-radius: 50%;
-  border: 2px solid rgba(249, 115, 22, 0.6);
-  animation: fabPulseRing 2s ease-out infinite;
+  background: radial-gradient(circle, rgba(255, 107, 94, 0.4) 0%, transparent 70%);
+  animation: applePulse 3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
   pointer-events: none;
+  z-index: -1;
 }
 
-@keyframes fabPulseRing {
+.fab-pulse-ring::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 107, 94, 0.5);
+  animation: appleRing 3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes applePulse {
+  0%, 100% { transform: scale(1); opacity: 0.3; }
+  50% { transform: scale(1.15); opacity: 0.6; }
+}
+
+@keyframes appleRing {
   0% { transform: scale(1); opacity: 0.8; }
-  100% { transform: scale(1.4); opacity: 0; }
+  50% { transform: scale(1.4); opacity: 0.2; }
+  100% { transform: scale(1.6); opacity: 0; }
 }

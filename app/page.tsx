@@ -243,7 +243,7 @@ export default function HomePage() {
 
             {/* Featured task card — shown at top of menu when set */}
             {featuredTask && (
-              <div className="featured-task-card animate-in" onClick={() => { setPage("tasks"); setIsMenuOpen(false); setFeaturedTask(null); }}>
+              <div className="featured-task-card animate-in" onClick={() => { setPage("tasks"); setIsMenuOpen(false); }}>
                 <div className="featured-task-emoji">{featuredTask.emoji || "📝"}</div>
                 <div className="featured-task-content">
                   <span className="featured-task-label">Sırada</span>
