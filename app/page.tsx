@@ -21,14 +21,13 @@ import {
 import PomodoroTimer from "./components/PomodoroTimer";
 import TaskList from "./components/TaskList";
 import AmbientSounds from "./components/AmbientSounds";
-import SiteBlocker from "./components/SiteBlocker";
 import RewardSystem from "./components/RewardSystem";
 import ThemeSelector from "./components/ThemeSelector";
 import EmergencyTimer from "./components/EmergencyTimer";
 import Analytics from "./components/Analytics";
 import { getAppName } from "./context/TimerContext";
 
-type Page = "home" | "tasks" | "sounds" | "blocker" | "rewards" | "theme" | "emergency" | "analytics";
+type Page = "home" | "tasks" | "sounds" | "rewards" | "theme" | "emergency" | "analytics";
 
 const STORAGE_KEY_INTERVAL = "yaverfx-task-notify-hours";
 const STORAGE_KEY_TASKS = "yaverfx-tasks";
@@ -37,7 +36,6 @@ const MENU_ITEMS = [
   { id: "home", icon: Home, label: "Ana Ekran", detail: "Odak oturumu" },
   { id: "tasks", icon: CheckSquare, label: "Görevler", detail: "Planlarını sırala" },
   { id: "sounds", icon: Waves, label: "Sesler", detail: "Ortam katmanları" },
-  { id: "blocker", icon: ShieldBan, label: "Engelleyici", detail: "Dikkat dağıtıcıları kapat" },
   { id: "rewards", icon: Trophy, label: "Ödüller", detail: "İlerleme ve puanlar" },
   { id: "theme", icon: Palette, label: "Tema", detail: "Görünümü değiştir" },
   { id: "emergency", icon: Siren, label: "Acil Durakla", detail: "Kısa nefes arası" },
@@ -152,8 +150,6 @@ export default function HomePage() {
         return <div className="page-container animate-in"><TaskList onTasksChange={setTasks} /></div>;
       case "sounds":
         return <div className="page-container animate-in"><AmbientSounds /></div>;
-      case "blocker":
-        return <div className="page-container animate-in"><SiteBlocker /></div>;
       case "rewards":
         return <div className="page-container animate-in"><RewardSystem /></div>;
       case "theme":

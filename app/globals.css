@@ -227,7 +227,7 @@ body { background: var(--bg); color: var(--text); overflow: hidden; min-height: 
 /* FAB & Menu */
 .fab-main { position: fixed; bottom: max(40px, calc(40px + env(safe-area-inset-bottom))); left: 50%; transform: translateX(-50%) translateZ(0); width: 64px; height: 64px; border-radius: 50%; background: var(--surface); backdrop-filter: var(--glass); -webkit-backdrop-filter: blur(35px); border: var(--border-light); color: var(--text); z-index: 2000; transition: all 0.4s; box-shadow: 0 12px 40px rgba(0,0,0,0.3); }
 .fab-main.open { transform: translateX(-50%) rotate(90deg) translateZ(0); background: var(--accent); color: var(--btn-text); }
-.menu-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); z-index: 1500; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: all 0.4s; padding-bottom: max(20px, env(safe-area-inset-bottom)); }
+.menu-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); z-index: 1500; display: flex; align-items: flex-end; justify-content: center; opacity: 0; pointer-events: none; transition: all 0.4s; padding-bottom: max(20px, env(safe-area-inset-bottom)); }
 .menu-overlay.active { opacity: 1; pointer-events: auto; }
 .menu-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; padding: 24px; width: 100%; max-width: 400px;}
 .menu-item { background: var(--surface); border: var(--border-light); padding: 32px 16px; border-radius: var(--radius-lg); display: flex; flex-direction: column; align-items: center; gap: 12px; transition: all 0.3s; transform: translateZ(0); }
@@ -1058,6 +1058,7 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 .menu-sheet {
   width: 100%;
   max-width: 500px;
+  max-height: 85vh;
   background: var(--glass-bg);
   backdrop-filter: blur(60px);
   -webkit-backdrop-filter: blur(60px);
@@ -1067,6 +1068,9 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   padding: 12px 20px max(20px, env(safe-area-inset-bottom));
   transform: translateY(100%);
   transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .menu-overlay.active .menu-sheet {
