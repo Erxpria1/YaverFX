@@ -37,6 +37,22 @@ const VOICE_MESSAGES: Record<string, { erkek: string; kiz: string }> = {
   }
 };
 
+// Get current character index for notifications
+function getCurrentCharacterIndex(): number {
+  if (typeof window === "undefined") return 0;
+  const stored = localStorage.getItem("yaverfx-stats");
+  if (stored) {
+    try {
+      const parsed = JSON.parse(stored);
+      const points = Number(parsed.points) || 0;
+      const level = Math.floor(points / 100) + 1;
+      // Map level to character index (1-6 -> 0-5)
+      return Math.min(level, 6) - 1;
+    } catch {}
+  }
+  return 0;
+}
+
 function getStoredSoundId(): NotificationSoundId {
   if (typeof window === "undefined") return "default";
   return (localStorage.getItem("yaverfx-notification-sound") as NotificationSoundId) || "default";
@@ -47,11 +63,48 @@ export function setStoredSoundId(id: NotificationSoundId) {
   localStorage.setItem("yaverfx-notification-sound", id);
 }
 
-export function requestNotificationPermission(): Promise<NotificationPermission | "default"> {
+// Convert VAPID public key for PushManager
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+export async function subscribeToPushNotifications() {
+  if (typeof window === "undefined" || !("serviceWorker" in navigator)) return null;
+  const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+  if (!vapidKey) return null;
+
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    let subscription = await registration.pushManager.getSubscription();
+    
+    if (!subscription) {
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidKey)
+      });
+    }
+    
+    localStorage.setItem("yaverfx-push-subscription", JSON.stringify(subscription));
+    return subscription;
+  } catch (error) {
+    console.warn("Failed to subscribe to push notifications", error);
+    return null;
+  }
+}
+
+export async function requestNotificationPermission(): Promise<NotificationPermission | "default"> {
   if (typeof window === "undefined") return Promise.resolve("default");
   if (!("Notification" in window)) return Promise.resolve("default");
   
   if (Notification.permission === "granted") {
+    await subscribeToPushNotifications();
     return Promise.resolve("granted");
   }
   
@@ -59,7 +112,11 @@ export function requestNotificationPermission(): Promise<NotificationPermission 
     return Promise.resolve("denied");
   }
   
-  return Notification.requestPermission();
+  const permission = await Notification.requestPermission();
+  if (permission === "granted") {
+    await subscribeToPushNotifications();
+  }
+  return permission;
 }
 
 export async function sendBrowserNotification(
@@ -78,15 +135,36 @@ export async function sendBrowserNotification(
   // Always play audio regardless of notification permission
   playNotificationSound(id);
   
+  // Update SW with current character index
+  if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.controller.postMessage({
+      type: "SET_CHARACTER_INDEX",
+      index: getCurrentCharacterIndex()
+    });
+  }
+  
   if (Notification.permission !== "granted") {
     return false;
+  }
+  
+  // Send remote push if subscription exists
+  const subStr = localStorage.getItem("yaverfx-push-subscription");
+  if (subStr) {
+    try {
+      const subscription = JSON.parse(subStr);
+      fetch("/api/push/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subscription, title, body, requireInteraction: false })
+      }).catch(e => console.warn("Remote push failed", e));
+    } catch(e) {}
   }
   
   try {
     const notification = new Notification(title, {
       body,
-      icon: "/icon-192.png",
-      badge: "/icon-192.png",
+      icon: `/characters/char_${getCurrentCharacterIndex()}.png`,
+      badge: `/characters/char_${getCurrentCharacterIndex()}.png`,
       tag: "yaverfx-notification",
       requireInteraction: false,
       silent: useVoice // If using voice, notification is silent (audio handles it)
@@ -116,6 +194,14 @@ export async function sendTaskNotification(
   // Always play audio
   playNotificationSound(soundId);
   
+  // Update SW with current character index
+  if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.controller.postMessage({
+      type: "SET_CHARACTER_INDEX",
+      index: getCurrentCharacterIndex()
+    });
+  }
+  
   if (typeof window === "undefined") return false;
   if (!("Notification" in window)) return false;
   
@@ -123,10 +209,23 @@ export async function sendTaskNotification(
     return false;
   }
   
+  // Send remote push if subscription exists
+  const subStr = localStorage.getItem("yaverfx-push-subscription");
+  if (subStr) {
+    try {
+      const subscription = JSON.parse(subStr);
+      fetch("/api/push/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subscription, title: "YaverFX - Görev Zamanı!", body: `${taskEmoji} ${taskText}`, requireInteraction: true })
+      }).catch(e => console.warn("Remote push failed", e));
+    } catch(e) {}
+  }
+  
   try {
     const notification = new Notification("YaverFX - Görev Zamanı!", {
       body: `${taskEmoji} ${taskText}`,
-      icon: "/icon-192.png",
+      icon: `/characters/char_${getCurrentCharacterIndex()}.png`,
       tag: "yaverfx-task-notification",
       requireInteraction: true
     });

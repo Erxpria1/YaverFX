@@ -50,17 +50,6 @@ export default function RootLayout({
                 var appleMeta = document.querySelector('meta[name="apple-mobile-web-app-title"]');
                 if (appleMeta) appleMeta.setAttribute('content', appName);
               })();
-              
-              // Register service worker
-              if ('serviceWorker' in navigator) {
-                window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js').then(function(registration) {
-                    console.log('SW registered with scope:', registration.scope);
-                  }, function(err) {
-                    console.log('SW registration failed:', err);
-                  });
-                });
-              }
             `,
           }}
         />
