@@ -1,28 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Coffee, Pause, Play, RotateCcw, TimerReset, Zap } from "lucide-react";
 import { useTimer } from "../context/TimerContext";
 
 export default function PomodoroTimer() {
   const { mode, isRunning, display, progress, toggleTimer, resetTimer, setMode, mounted } = useTimer();
-  const [eyePos, setEyePos] = useState({ x: 0, y: 0 });
-
-  useEffect(() => {
-    if (!isRunning) {
-      setEyePos({ x: 0, y: 0 });
-      return;
-    }
-
-    const interval = setInterval(() => {
-      setEyePos({
-        x: (Math.random() - 0.5) * 6,
-        y: (Math.random() - 0.5) * 4,
-      });
-    }, 2000);
-
-    return () => clearInterval(interval);
-  }, [isRunning]);
 
   if (!mounted) {
     return <div className="timer-stage"><div className="timer-ring-wrapper"></div></div>;
@@ -111,7 +93,7 @@ export default function PomodoroTimer() {
             </svg>
 
             <div className="timer-inner">
-              <div className="timer-breathing-core"></div>
+              <div className="timer-breathing-core" />
               <div className="timer-vertical-content">
                 <div className="timer-status-pill">
                   <TimerReset size={15} />
@@ -121,15 +103,6 @@ export default function PomodoroTimer() {
                 <div className="timer-digits" aria-live="polite">
                   <span className="digit-min">{mins}</span>
                   <span className="digit-sec">{secs}</span>
-                </div>
-
-                <div className={`yaver-eyes ${isRunning ? "active" : "idle"}`}>
-                  <div className="eye">
-                    <div className="pupil" style={{ transform: `translate(${eyePos.x}px, ${eyePos.y}px)` }}></div>
-                  </div>
-                  <div className="eye">
-                    <div className="pupil" style={{ transform: `translate(${eyePos.x}px, ${eyePos.y}px)` }}></div>
-                  </div>
                 </div>
 
                 <span className="timer-status-mini">{isRunning ? "AKIŞ DEVAM EDİYOR" : "BAŞLAMAYA HAZIR"}</span>
