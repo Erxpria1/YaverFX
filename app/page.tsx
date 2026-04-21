@@ -213,6 +213,7 @@ export default function HomePage() {
           </section>
         </main>
 
+        {isMenuOpen && (
         <div
           className={`menu-overlay ${isMenuOpen ? "active" : ""}`}
           onClick={() => { setIsMenuOpen(false); setShowSettings(false); }}
@@ -299,9 +300,10 @@ export default function HomePage() {
             </div>
           </div>
         </div>
+        )}
 
         <button
-          className={`fab-main ${isMenuOpen ? "open" : ""}`}
+          className={`fab-main ${isMenuOpen ? "open" : "breathing"}`}
           onClick={() => { setIsMenuOpen((prev) => !prev); setShowSettings(false); }}
           aria-label={isMenuOpen ? "Menüyü kapat" : "Menüyü aç"}
         >

@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import NoSleep from "nosleep.js";
 import { playWorkCompleteSound, playBreakCompleteSound, requestNotificationPermission, sendBrowserNotification } from "../utils/notifications";
+import { useTimerSession } from "../hooks/useTimerSession";
 
 // Ubuntu screen block — timer çalışırken ekran karartmayı kapat
 const enableScreenBlock = async () => {
@@ -91,6 +92,9 @@ export function setAppName(name: string) {
 const TimerContext = createContext<TimerContextValue | undefined>(undefined);
 
 export function TimerProvider({ children }: { children: React.ReactNode }) {
+  // Tab session management for preventing race conditions
+  const { acquireLock, releaseLock, isLocked, lockedByTab } = useTimerSession();
+  
   const [state, setState] = useState<TimerState>(() => {
     if (typeof window === "undefined") return DEFAULT_STATE;
     try {
@@ -124,6 +128,7 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
   const wakeLock = useRef<WakeLockSentinel | null>(null);
   const noSleep = useRef<NoSleep | null>(null);
   const hasNotifiedRef = useRef(false); // Prevent double notifications
+  const lockedByTabRef = useRef<string | null>(null);
 
   const loadStats = useCallback((): Stats => {
     try {
@@ -261,6 +266,9 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
       }
     }
     
+    // Release tab lock when timer completes
+    releaseLock();
+    
     // Schedule auto-transition to next mode after a brief delay
     setTimeout(() => {
       const nextMode = state.mode === "work" ? "break" : "work";
@@ -277,7 +285,7 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
       
       hasNotifiedRef.current = false;
     }, 1500);
-  }, [state.mode, state.sessionTime, updateStats, disableWakeLock, loadStats]);
+  }, [state.mode, state.sessionTime, updateStats, disableWakeLock, loadStats, releaseLock]);
 
   // Main timer interval
   useEffect(() => {
@@ -358,23 +366,34 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
       const permission = await requestNotificationPermission();
       console.log("Notification permission:", permission);
       
+      // Try to acquire tab lock
+      const newEndTime = Date.now() + state.timeLeft * 1000;
+      const lockAcquired = acquireLock(newEndTime, state.mode);
+      
+      if (!lockAcquired) {
+        // Another tab has the lock - show feedback
+        console.warn("Timer is running in another tab:", lockedByTab);
+        return;
+      }
+      
       await enableWakeLock();
       
       setState(prev => ({
         ...prev,
         isRunning: true,
-        endTime: Date.now() + prev.timeLeft * 1000,
+        endTime: newEndTime,
       }));
     } else {
       // Pausing timer
       disableWakeLock();
+      releaseLock(); // Release tab lock
       setState(prev => ({
         ...prev,
         isRunning: false,
         endTime: null,
       }));
     }
-  }, [state.isRunning, enableWakeLock, disableWakeLock]);
+  }, [state.isRunning, state.timeLeft, state.mode, enableWakeLock, disableWakeLock, acquireLock, releaseLock, lockedByTab]);
 
   const resetTimer = useCallback(() => {
     disableWakeLock();
@@ -383,8 +402,9 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
       intervalRef.current = null;
     }
     hasNotifiedRef.current = false;
+    releaseLock(); // Release tab lock
     setState(DEFAULT_STATE);
-  }, [disableWakeLock]);
+  }, [disableWakeLock, releaseLock]);
 
   const setMode = useCallback((mode: Mode) => {
     disableWakeLock();

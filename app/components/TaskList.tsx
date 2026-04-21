@@ -128,6 +128,7 @@ export default function TaskList({ onTasksChange }: TaskListProps) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [input, setInput] = useState("");
+  const [inputError, setInputError] = useState<string | null>(null);
   const [emoji, setEmoji] = useState("📝");
   const [time, setTime] = useState("");
   const [date, setDate] = useState("");
@@ -222,7 +223,12 @@ export default function TaskList({ onTasksChange }: TaskListProps) {
 
   const addTaskCallback = useCallback(() => {
     const trimmed = input.trim();
-    if (!trimmed) return;
+    if (!trimmed) {
+      setInputError("Görev adı gerekli.");
+      return;
+    }
+
+    setInputError(null);
     
     const newTask: Task = {
       id: crypto.randomUUID(),
@@ -301,10 +307,17 @@ export default function TaskList({ onTasksChange }: TaskListProps) {
             <input
               type="text"
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(e) => {
+                setInput(e.target.value);
+                if (inputError && e.target.value.trim()) {
+                  setInputError(null);
+                }
+              }}
               onKeyDown={(e) => e.key === "Enter" && addTaskCallback()}
               placeholder="Yeni ne başarmak istersin?"
-              className="task-input"
+              className={`task-input ${inputError ? "task-input-error" : ""}`}
+              aria-invalid={inputError ? true : false}
+              aria-describedby={inputError ? "task-input-error" : undefined}
             />
             <button onClick={() => setShowDetails(!showDetails)} className="task-expand-btn" aria-label="Detayları aç">
               {showDetails ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
@@ -313,6 +326,12 @@ export default function TaskList({ onTasksChange }: TaskListProps) {
               <Plus size={18} />
             </button>
           </div>
+
+          {inputError && (
+            <p id="task-input-error" className="task-input-feedback" role="alert">
+              {inputError}
+            </p>
+          )}
 
           {showDetails && (
             <div className="task-details-form animate-in">
