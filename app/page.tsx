@@ -183,11 +183,7 @@ export default function HomePage() {
 
   return (
     <div className="app-shell">
-      <div className="ambient-mesh" aria-hidden="true">
-        <span className="mesh-orb orb-a"></span>
-        <span className="mesh-orb orb-b"></span>
-        <span className="mesh-orb orb-c"></span>
-      </div>
+      <div className="ambient-mesh" aria-hidden="true" />
 
       <div className="app">
         <header className="top-bar">
