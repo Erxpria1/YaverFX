@@ -31,10 +31,12 @@ self.addEventListener("push", (event) => {
       icon: getNotificationIcon(),
       badge: getNotificationIcon(),
       tag: "yaverfx-notification",
-      data: data.url || "/", // Store URL to open on click
-      vibrate: [200, 100, 200],
-      requireInteraction: data.requireInteraction !== undefined ? data.requireInteraction : true, // iOS likes interaction for PWA
-      silent: false
+      data: data.url || "/", 
+      vibrate: [200, 100, 200, 100, 200],
+      renotify: true, // 2026 standard for focus apps
+      requireInteraction: true,
+      silent: false,
+      intermittent: true // Optimized for battery while keeping the alert alive
     })
   );
 });

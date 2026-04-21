@@ -20,17 +20,20 @@ function CrystalMesh({ mode, progress }: CrystalProps) {
       : { color: "#4ade80", speed: 1.5, distort: 0.2 };
   }, [mode, progress]);
 
+  // 2026 Performance Pattern: Power-aware rendering
   useFrame((state) => {
     if (!meshRef.current) return;
     
-    // Zamanlayıcıya bağlı dönüş
+    // Check for power saving mode or background state (simulated via tab visibility)
+    if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+
     const time = state.clock.getElapsedTime();
-    meshRef.current.rotation.x = time * (config.speed * 0.2);
-    meshRef.current.rotation.y = time * (config.speed * 0.3);
+    meshRef.current.rotation.x = time * (config.speed * 0.15);
+    meshRef.current.rotation.y = time * (config.speed * 0.25);
     
-    // Hafif nefes alma efekti
-    const scale = 1 + Math.sin(time * 1.5) * 0.05;
-    meshRef.current.scale.set(scale, scale, scale);
+    // Ultra-smooth interpolation for 2026 displays (120Hz+)
+    const targetScale = 1 + Math.sin(time * 1.5) * 0.04;
+    meshRef.current.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.1);
   });
 
   return (
