@@ -2298,3 +2298,37 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   cursor: pointer;
   border: none;
 }
+
+/* ── Notify Hours Grid ─────────────────────────────────── */
+.notify-hours-grid {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.notify-hour-btn {
+  flex: 1;
+  min-width: 44px;
+  padding: 8px 4px;
+  border-radius: var(--radius-sm);
+  border: var(--border-light);
+  background: var(--surface-light);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+}
+
+.notify-hour-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.notify-hour-btn.active {
+  background: var(--accent);
+  color: var(--btn-text);
+  border-color: var(--accent);
+  box-shadow: 0 0 12px rgba(255, 46, 99, 0.3);
+}

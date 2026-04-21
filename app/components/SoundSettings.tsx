@@ -1,21 +1,24 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Volume2, VolumeX, Bell, MousePointerClick, Check } from "lucide-react";
+import { Bell, BellRing, MousePointerClick, Volume2, VolumeX, Check, RefreshCw } from "lucide-react";
 import { playPixelClick, playPixelCoin, playPixelComplete, playPixelStart } from "../utils/pixelSound";
 
 const SOUND_STORAGE_KEY = "yaverfx-sounds";
+const STORAGE_KEY_INTERVAL = "yaverfx-task-notify-hours";
 
 interface SoundSettings {
   clickEnabled: boolean;
   notifEnabled: boolean;
   volume: number;
+  notifyHours?: number;
 }
 
 const defaults: SoundSettings = {
   clickEnabled: true,
   notifEnabled: true,
   volume: 0.8,
+  notifyHours: 12,
 };
 
 function loadSoundSettings(): SoundSettings {
@@ -32,26 +35,16 @@ function saveSoundSettings(s: SoundSettings) {
   localStorage.setItem(SOUND_STORAGE_KEY, JSON.stringify(s));
 }
 
-// Preview functions that respect the settings
 export function playUISound(type: "click" | "coin" | "complete" | "start") {
   try {
     const settings = loadSoundSettings();
     if (!settings.clickEnabled && type !== "complete") return;
-
     const vol = settings.volume * 0.6;
     switch (type) {
-      case "click":
-        playPixelClick(vol);
-        break;
-      case "coin":
-        playPixelCoin(vol);
-        break;
-      case "complete":
-        playPixelComplete(settings.volume * 0.8);
-        break;
-      case "start":
-        playPixelStart(settings.volume * 0.8);
-        break;
+      case "click": playPixelClick(vol); break;
+      case "coin": playPixelCoin(vol); break;
+      case "complete": playPixelComplete(settings.volume * 0.8); break;
+      case "start": playPixelStart(settings.volume * 0.8); break;
     }
   } catch {}
 }
@@ -59,10 +52,40 @@ export function playUISound(type: "click" | "coin" | "complete" | "start") {
 export default function SoundSettings() {
   const [settings, setSettings] = useState<SoundSettings>(loadSoundSettings);
 
+  const [notifyHours, setNotifyHours] = useState(() => {
+    if (typeof window === "undefined") return 12;
+    const stored = localStorage.getItem(STORAGE_KEY_INTERVAL);
+    return stored ? parseFloat(stored) : 12;
+  });
+
+  // Pick a random incomplete task
+  const tryPickFeaturedTask = useCallback(() => {
+    const STORAGE_KEY_TASKS = "yaverfx-tasks";
+    const stored = localStorage.getItem(STORAGE_KEY_TASKS);
+    if (!stored) return;
+    try {
+      const tasks = JSON.parse(stored);
+      if (!Array.isArray(tasks)) return;
+      const incomplete = tasks.filter((t: { completed: boolean }) => !t.completed);
+      if (incomplete.length === 0) return;
+      const lastPick = localStorage.getItem("yaverfx-task-last-pick");
+      const intervalMs = (settings.notifyHours ?? 12) * 60 * 60 * 1000;
+      if (!lastPick || Date.now() - parseInt(lastPick) > intervalMs) {
+        const pick = incomplete[Math.floor(Math.random() * incomplete.length)];
+        localStorage.setItem("yaverfx-task-last-pick", String(Date.now()));
+        window.dispatchEvent(new CustomEvent("yaverfx-feature-pick", { detail: pick }));
+      }
+    } catch {}
+  }, [settings.notifyHours]);
+
   const update = useCallback((patch: Partial<SoundSettings>) => {
     const next = { ...settings, ...patch };
     setSettings(next);
     saveSoundSettings(next);
+    if (patch.notifyHours !== undefined) {
+      setNotifyHours(patch.notifyHours);
+      localStorage.setItem(STORAGE_KEY_INTERVAL, String(patch.notifyHours));
+    }
   }, [settings]);
 
   const previewClick = () => {
@@ -76,7 +99,8 @@ export default function SoundSettings() {
   return (
     <div className="sounds-wrapper animate-in">
       <div className="theme-list">
-        {/* Click Sounds */}
+
+        {/* Tiklama Sesleri */}
         <div className="sound-card">
           <div className="sound-header">
             <div className="sound-icon-wrap">
@@ -106,7 +130,7 @@ export default function SoundSettings() {
           )}
         </div>
 
-        {/* Notification Sounds */}
+        {/* Bildirim Sesleri */}
         <div className="sound-card">
           <div className="sound-header">
             <div className="sound-icon-wrap">
@@ -136,7 +160,7 @@ export default function SoundSettings() {
           )}
         </div>
 
-        {/* Volume */}
+        {/* Ses Seviyesi */}
         <div className="sound-card">
           <div className="sound-header">
             <div className="sound-icon-wrap">
@@ -159,6 +183,45 @@ export default function SoundSettings() {
             />
           </div>
         </div>
+
+        {/* Gorev Hatirlatma Araligi */}
+        <div className="sound-card">
+          <div className="sound-header">
+            <div className="sound-icon-wrap">
+              <BellRing size={20} />
+            </div>
+            <div className="sound-info">
+              <span className="theme-name">Gorev Hatirlatma</span>
+              <span className="theme-desc">Her {notifyHours} saatte bir rastgele gorev gosterir</span>
+            </div>
+          </div>
+          <div className="notify-hours-grid">
+            {([1, 3, 6, 12, 24] as const).map((h) => (
+              <button
+                key={h}
+                onClick={() => {
+                  update({ notifyHours: h });
+                  if (settings.notifEnabled) playPixelComplete(settings.volume * 0.8);
+                }}
+                className={`notify-hour-btn ${notifyHours === h ? "active" : ""}`}
+              >
+                {h}s
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => {
+              if (settings.notifEnabled) playPixelComplete(settings.volume * 0.8);
+              tryPickFeaturedTask();
+            }}
+            className="preview-btn"
+            style={{ marginTop: "6px" }}
+          >
+            <RefreshCw size={14} />
+            <span>Simdi Bir Gorev Sec</span>
+          </button>
+        </div>
+
       </div>
     </div>
   );
