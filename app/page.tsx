@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import {
   BellRing,
   ChartNoAxesCombined,
   CheckSquare,
   ChevronRight,
+  FileBarChart,
   Home,
   Menu,
   Palette,
@@ -14,6 +16,7 @@ import {
   Sparkles,
   Trophy,
   X,
+  SlidersHorizontal,
 } from "lucide-react";
 import PomodoroTimer from "./components/PomodoroTimer";
 import TaskList from "./components/TaskList";
@@ -23,6 +26,7 @@ import ThemeSelector from "./components/ThemeSelector";
 import EmergencyTimer from "./components/EmergencyTimer";
 import Analytics from "./components/Analytics";
 import PixelCompanion from "./components/PixelCompanion";
+import SettingsPanel from "./components/SettingsPanel";
 import { getAppName } from "./context/TimerContext";
 import { calculateLevel, getCompanionForLevel } from "./utils/stats";
 import {
@@ -32,7 +36,7 @@ import {
   type ScheduledNotification,
 } from "./utils/scheduledNotifications";
 
-type Page = "home" | "tasks" | "sounds" | "rewards" | "theme" | "emergency" | "analytics";
+type Page = "home" | "tasks" | "sounds" | "rewards" | "theme" | "emergency" | "analytics" | "reports" | "settings";
 
 const STORAGE_KEY_INTERVAL = "yaverfx-task-notify-hours";
 const STORAGE_KEY_TASKS = "yaverfx-tasks";
@@ -45,6 +49,8 @@ const MENU_ITEMS = [
   { id: "theme", icon: Palette, label: "Tema", detail: "Gorunumu degistir" },
   { id: "emergency", icon: Siren, label: "Acil Durakla", detail: "Kisa nefes arasi" },
   { id: "analytics", icon: ChartNoAxesCombined, label: "Analitik", detail: "Ritmini izle" },
+  { id: "reports", icon: FileBarChart, label: "Rapor", detail: "Istatistiklerini gor" },
+  { id: "settings", icon: SlidersHorizontal, label: "Ayarlar", detail: "Zamanlayici ve otomatik baslatma" },
 ] as const;
 
 interface Task {
@@ -64,6 +70,7 @@ function getIntervalMs(): number {
 }
 
 export default function HomePage() {
+  const router = useRouter();
   const [page, setPage] = useState<Page>("home");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [appName, setAppName] = useState(getAppName());
@@ -209,6 +216,8 @@ export default function HomePage() {
         return <div className="page-container animate-in"><EmergencyTimer /></div>;
       case "analytics":
         return <div className="page-container animate-in"><Analytics /></div>;
+      case "settings":
+        return <div className="page-container animate-in"><SettingsPanel /></div>;
     }
   };
 
@@ -291,8 +300,13 @@ export default function HomePage() {
                       key={item.id}
                       className={`menu-item ${page === item.id ? "active" : ""}`}
                       onClick={() => {
-                        setPage(item.id as Page);
-                        setIsMenuOpen(false);
+                        if (item.id === "reports") {
+                          router.push("/reports");
+                          setIsMenuOpen(false);
+                        } else {
+                          setPage(item.id as Page);
+                          setIsMenuOpen(false);
+                        }
                       }}
                     >
                       <span className="menu-icon">

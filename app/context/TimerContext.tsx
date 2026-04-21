@@ -49,7 +49,7 @@ interface TimerSettings {
   sessionsBeforeLongBreak: number;
 }
 
-const DEFAULT_SETTINGS: TimerSettings = {
+export const DEFAULT_SETTINGS: TimerSettings = {
   workDuration: DEFAULT_WORK_DURATION,
   shortBreakDuration: DEFAULT_SHORT_BREAK,
   longBreakDuration: DEFAULT_LONG_BREAK,
@@ -98,6 +98,8 @@ interface Stats {
 
 interface TimerContextValue extends TimerState {
   toggleTimer: () => void;
+  pause: () => void;
+  resume: () => void;
   resetTimer: () => void;
   setMode: (mode: Mode) => void;
   updateStats: (updates: Partial<Stats>) => void;
@@ -354,6 +356,27 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
     }
   }, [state.isRunning, state.timeLeft, state.mode, enableWakeLock, disableWakeLock, acquireLock, releaseLock, lockedByTab]);
 
+  const pause = useCallback(() => {
+    if (state.isRunning) {
+      disableWakeLock();
+      releaseLock();
+      setState(prev => ({ ...prev, isRunning: false, endTime: null }));
+    }
+  }, [state.isRunning, disableWakeLock, releaseLock]);
+
+  const resume = useCallback(async () => {
+    if (!state.isRunning && state.timeLeft > 0) {
+      await requestNotificationPermission();
+      const newEndTime = Date.now() + state.timeLeft * 1000;
+      if (!acquireLock(newEndTime, state.mode)) {
+        console.warn("Timer is running in another tab:", lockedByTab);
+        return;
+      }
+      await enableWakeLock();
+      setState(prev => ({ ...prev, isRunning: true, endTime: newEndTime }));
+    }
+  }, [state.isRunning, state.timeLeft, state.mode, enableWakeLock, acquireLock, lockedByTab]);
+
   const resetTimer = useCallback(() => {
     disableWakeLock();
     if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
@@ -399,6 +422,8 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
     <TimerContext.Provider value={{
       ...state,
       toggleTimer,
+      pause,
+      resume,
       resetTimer,
       setMode,
       updateStats,

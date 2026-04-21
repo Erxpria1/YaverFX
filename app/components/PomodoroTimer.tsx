@@ -3,6 +3,7 @@
 import { useCallback } from "react";
 import { Coffee, Pause, Play, RotateCcw, Zap, Moon } from "lucide-react";
 import { useTimer } from "../context/TimerContext";
+import { useTabTitle, useDocumentVisibility } from "./useTabTitle";
 import {
   playPixelClick,
   playPixelStart,
@@ -11,6 +12,12 @@ import {
 } from "../utils/pixelSound";
 
 export default function PomodoroTimer() {
+  // Enable live tab title updates
+  useTabTitle();
+  
+  // Enable auto-pause when tab is hidden
+  useDocumentVisibility();
+
   const {
     mode, isRunning, display, progress,
     toggleTimer, resetTimer, setMode, mounted,
