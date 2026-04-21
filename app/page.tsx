@@ -44,7 +44,7 @@ const STORAGE_KEY_TASKS = "yaverfx-tasks";
 const MENU_ITEMS = [
   { id: "home", icon: Home, label: "Ana Ekran", detail: "Odak oturumu" },
   { id: "tasks", icon: CheckSquare, label: "Gorevler", detail: "Planlarini sirala" },
-  { id: "sounds", icon: Settings, label: "Ayarlar", detail: "Sesler ve hatirlatmalar" },
+  { id: "sounds", icon: Settings, label: "Ses Ayarlar", detail: "Sesler ve hatirlatmalar" },
   { id: "rewards", icon: Trophy, label: "Oduller", detail: "Ilerleme ve puanlar" },
   { id: "theme", icon: Palette, label: "Tema", detail: "Gorunumu degistir" },
   { id: "emergency", icon: Siren, label: "Acil Durakla", detail: "Kisa nefes arasi" },
