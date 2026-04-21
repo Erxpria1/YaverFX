@@ -2,14 +2,12 @@
 
 import { useState, useEffect } from "react";
 
-type Theme = "modern" | "cyber" | "hacker" | "game" | "minimal" | "pixel";
+type Theme = "modern" | "cyber" | "minimal" | "pixel";
 
 const THEMES: { id: Theme; name: string; color: string; desc: string }[] = [
-  { id: "modern", name: "Kırmızı", color: "#ff375f", desc: "Klasik Yaver Deneyimi" },
-  { id: "cyber", name: "Mavi", color: "#64d2ff", desc: "Gelecekçi Odak" },
-  { id: "hacker", name: "Yeşil", color: "#30d158", desc: "Terminal Modu" },
-  { id: "game", name: "Turuncu", color: "#ff9f0a", desc: "Oyun Seviyesi" },
-  { id: "minimal", name: "Bleu", color: "#0a84ff", desc: "Sakin ve Yalın" },
+  { id: "modern", name: "Kirmizi", color: "#ff375f", desc: "Klasik Yaver" },
+  { id: "cyber", name: "Cyber", color: "#64d2ff", desc: "Gelecek Odak" },
+  { id: "minimal", name: "Minimal", color: "#0a84ff", desc: "Sakin Yalin" },
   { id: "pixel", name: "Pixel", color: "#ff2e63", desc: "8-bit Retro" },
 ];
 
