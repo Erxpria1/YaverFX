@@ -36,6 +36,7 @@ import {
   type ScheduledNotification,
 } from "./utils/scheduledNotifications";
 
+type Theme = "modern" | "cyber" | "minimal" | "pixel";
 type Page = "home" | "tasks" | "sounds" | "rewards" | "theme" | "emergency" | "reports" | "settings";
 
 const STORAGE_KEY_INTERVAL = "yaverfx-task-notify-hours";
@@ -73,6 +74,7 @@ export default function HomePage() {
   const [page, setPage] = useState<Page>("home");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [appName, setAppName] = useState(getAppName());
+  const [currentTheme, setCurrentTheme] = useState<Theme>("modern");
   const [featuredTask, setFeaturedTask] = useState<Task | null>(null);
   const [tasksLoaded, setTasksLoaded] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -80,6 +82,15 @@ export default function HomePage() {
 
   const tasksRef = useRef<Task[]>([]);
   tasksRef.current = tasks;
+
+  // Load theme from localStorage
+  useEffect(() => {
+    const t = localStorage.getItem("yaverfx-theme") as Theme;
+    if (t && ["modern", "cyber", "minimal", "pixel"].includes(t)) {
+      setCurrentTheme(t);
+      document.documentElement.setAttribute("data-theme", t);
+    }
+  }, []);
 
   // Register Service Worker for background notifications
   useEffect(() => {
@@ -278,7 +289,7 @@ export default function HomePage() {
                   onClick={() => { setPage("tasks"); setIsMenuOpen(false); }}
                 >
                   <div className="featured-task-avatar">
-                    <PixelCompanion companion={currentCompanion} size={40} animate />
+                    <PixelCompanion companion={currentCompanion} size={40} animate theme={currentTheme} compact />
                     <div className="avatar-pulse" />
                   </div>
                   <div className="featured-task-content">

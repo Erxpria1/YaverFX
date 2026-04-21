@@ -7,11 +7,14 @@ import PixelCompanion from "./PixelCompanion";
 
 const POINTS_PER_LEVEL = 100;
 
+type Theme = "modern" | "cyber" | "minimal" | "pixel";
+
 export default function RewardSystem() {
   const [stats, setStats] = useState<StoredStats>({ focusTime: 0, tasksDone: 0, streak: 0, points: 0 });
   const [appName, setAppNameState] = useState(getAppName());
   const [showNameModal, setShowNameModal] = useState(false);
   const [tempName, setTempName] = useState(appName);
+  const [currentTheme, setCurrentTheme] = useState<Theme>("modern");
 
   useEffect(() => {
     const handleStatsUpdate = () => setStats(loadStats());
@@ -20,6 +23,9 @@ export default function RewardSystem() {
     handleStatsUpdate();
     window.addEventListener("yaverfx-stats-update", handleStatsUpdate);
     window.addEventListener("yaverfx-name-update", handleNameUpdate);
+
+    const t = localStorage.getItem("yaverfx-theme") as Theme;
+    if (t && ["modern", "cyber", "minimal", "pixel"].includes(t)) setCurrentTheme(t);
 
     return () => {
       window.removeEventListener("yaverfx-stats-update", handleStatsUpdate);
@@ -68,7 +74,7 @@ export default function RewardSystem() {
             transform: "scale(1.5)",
           }}
         >
-          <PixelCompanion companion={currentCompanion} size={200} animate={false} />
+          <PixelCompanion companion={currentCompanion} size={200} animate={false} theme={currentTheme} />
         </div>
 
         <div className="reward-top" style={{ position: "relative", zIndex: 1 }}>
@@ -163,7 +169,7 @@ export default function RewardSystem() {
                     Aktif
                   </span>
                 )}
-                <PixelCompanion companion={comp} size={48} animate={false} />
+                <PixelCompanion companion={comp} size={48} animate={false} theme={currentTheme} />
                 <div style={{ textAlign: "center" }}>
                   <div style={{ fontSize: "10px", fontWeight: "bold", color: "var(--text)" }}>
                     {isUnlocked ? comp.name : "???"}
