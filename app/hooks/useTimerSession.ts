@@ -11,14 +11,14 @@ export interface TimerSessionState {
   isLocked: boolean;
   lockedByTab: string | null;
   endTime: number | null;
-  mode: "work" | "break" | null;
+  mode: "work" | "shortBreak" | "longBreak" | null;
 }
 
 interface UseTimerSessionReturn {
   isActiveTab: boolean;
   isLocked: boolean;
   lockedByTab: string | null;
-  acquireLock: (endTime: number, mode: "work" | "break") => boolean;
+  acquireLock: (endTime: number, mode: "work" | "shortBreak" | "longBreak") => boolean;
   releaseLock: () => void;
   refreshLock: () => void;
 }
@@ -158,7 +158,7 @@ export function useTimerSession(): UseTimerSessionReturn {
   }, [getStoredLock]);
 
   // Acquire lock for this tab
-  const acquireLock = useCallback((endTime: number, mode: "work" | "break"): boolean => {
+  const acquireLock = useCallback((endTime: number, mode: "work" | "shortBreak" | "longBreak"): boolean => {
     const storedLock = getStoredLock();
     
     // If another tab has a valid lock, we can't acquire

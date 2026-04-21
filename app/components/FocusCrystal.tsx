@@ -6,7 +6,7 @@ import { MeshDistortMaterial, Float, PerspectiveCamera, Environment } from "@rea
 import * as THREE from "three";
 
 interface CrystalProps {
-  mode: "work" | "break";
+  mode: "work" | "shortBreak" | "longBreak";
   progress: number;
 }
 
@@ -15,9 +15,14 @@ function CrystalMesh({ mode, progress }: CrystalProps) {
   
   // Modlara göre renk ve bozulma efektleri
   const config = useMemo(() => {
-    return mode === "work" 
-      ? { color: "#ff6b5e", speed: 2 + progress * 5, distort: 0.4 } 
-      : { color: "#4ade80", speed: 1.5, distort: 0.2 };
+    switch (mode) {
+      case "work":
+        return { color: "#ff6b5e", speed: 2 + progress * 5, distort: 0.4 };
+      case "shortBreak":
+        return { color: "#4ade80", speed: 1.5, distort: 0.2 };
+      case "longBreak":
+        return { color: "#60a5fa", speed: 1.2, distort: 0.15 };
+    }
   }, [mode, progress]);
 
   // 2026 Performance Pattern: Power-aware rendering

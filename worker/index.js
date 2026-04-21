@@ -1,9 +1,16 @@
-// Character images for notifications (will be set from main app)
+// Character images for notifications
 let notificationCharacterIndex = 0;
 
 self.addEventListener("message", (event) => {
-  if (event.data && event.data.type === "SET_CHARACTER_INDEX") {
+  if (!event.data) return;
+
+  if (event.data.type === "SET_CHARACTER_INDEX") {
     notificationCharacterIndex = event.data.index || 0;
+  }
+
+  // Wake up and check scheduled notifications
+  if (event.data.type === "YAVERFX_CHECK_NOTIFICATIONS") {
+    checkScheduledNotifications();
   }
 });
 
@@ -11,32 +18,64 @@ function getNotificationIcon() {
   return `/characters/char_${notificationCharacterIndex}.png`;
 }
 
+// Check scheduled notifications from localStorage
+async function checkScheduledNotifications() {
+  try {
+    // Get all clients to access localStorage via message to page
+    const clients = await self.clients.matchAll({ type: "window" });
+    if (clients.length === 0) {
+      // No open tabs — try to show notification directly
+      // Note: this is limited by browser throttling
+      return;
+    }
+    // Ask the page to check and respond with notifications to fire
+    clients.forEach((client) => {
+      client.postMessage({ type: "YAVERFX_CHECK_NOTIFS_FROM_SW" });
+    });
+  } catch (e) {
+    console.warn("[SW] Failed to check notifications:", e);
+  }
+}
+
+// Periodic notification check — fires every 30 seconds when SW is active
+let checkIntervalId = null;
+
+function startPeriodicCheck() {
+  if (checkIntervalId) return;
+  checkIntervalId = setInterval(() => {
+    checkScheduledNotifications();
+  }, 30_000);
+}
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(self.clients.claim());
+  startPeriodicCheck();
+});
+
+self.addEventListener("install", (event) => {
+  self.skipWaiting();
+  startPeriodicCheck();
+});
+
 // Push notification handler
 self.addEventListener("push", (event) => {
   let data = { title: "YaverFX", body: "Odaklanma zamanı!" };
   try {
-    if (event.data) {
-      data = event.data.json();
-    }
+    if (event.data) data = event.data.json();
   } catch (e) {
-    // If not JSON, try text
-    if (event.data) {
-      data.body = event.data.text();
-    }
+    if (event.data) data.body = event.data.text();
   }
-  
+
   event.waitUntil(
     self.registration.showNotification(data.title, {
       body: data.body,
       icon: getNotificationIcon(),
       badge: getNotificationIcon(),
       tag: "yaverfx-notification",
-      data: data.url || "/", 
+      data: data.url || "/",
       vibrate: [200, 100, 200, 100, 200],
-      renotify: true, // 2026 standard for focus apps
+      renotify: true,
       requireInteraction: true,
-      silent: false,
-      intermittent: true // Optimized for battery while keeping the alert alive
     })
   );
 });
@@ -50,7 +89,7 @@ self.addEventListener("sync", (event) => {
         icon: getNotificationIcon(),
         badge: getNotificationIcon(),
         tag: "yaverfx-timer-notification",
-        requireInteraction: true
+        requireInteraction: true,
       })
     );
   }
@@ -63,16 +102,10 @@ self.addEventListener("notificationclick", (event) => {
 
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
-      // Focus existing window if available
       for (const client of clientList) {
-        if ("focus" in client) {
-          return client.focus();
-        }
+        if ("focus" in client) return client.focus();
       }
-      // Otherwise open new window
-      if (self.clients.openWindow) {
-        return self.clients.openWindow(urlToOpen);
-      }
+      if (self.clients.openWindow) return self.clients.openWindow(urlToOpen);
     })
   );
 });

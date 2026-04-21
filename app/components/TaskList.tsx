@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { CalendarDays, Check, ChevronDown, ChevronUp, Plus, StickyNote, Trash2 } from "lucide-react";
 import { useTimer } from "../context/TimerContext";
 import { playTaskSound, sendTaskNotification } from "../utils/notifications";
+import { scheduleNotification, cancelNotification } from "../utils/scheduledNotifications";
 
 interface Task {
   id: string;
@@ -148,12 +149,16 @@ export default function TaskList({ onTasksChange }: TaskListProps) {
     // Check for any overdue tasks immediately
     checkAndNotifyTasks(loadedTasks);
     
-    // Schedule upcoming task notifications
-    if (scheduledTimeoutRef.current) {
-      clearTimeout(scheduledTimeoutRef.current);
-    }
-    scheduledTimeoutRef.current = scheduleUpcomingTasks(loadedTasks);
-    
+    // Schedule all upcoming task notifications via Service Worker
+    loadedTasks.forEach((task) => {
+      if (!task.completed && task.date && task.time) {
+        const fireAt = new Date(`${task.date}T${task.time}`).getTime();
+        if (fireAt > Date.now()) {
+          scheduleNotification(task.id, task.text, fireAt);
+        }
+      }
+    });
+
     // Also check periodically (every minute)
     const checkInterval = setInterval(() => {
       const currentTasks = loadTasks();
@@ -244,13 +249,15 @@ export default function TaskList({ onTasksChange }: TaskListProps) {
       const updated = [newTask, ...prev];
       saveTasks(updated);
       onTasksChange?.(updated);
-      
-      // Schedule notification for new task
-      if (scheduledTimeoutRef.current) {
-        clearTimeout(scheduledTimeoutRef.current);
+
+      // Schedule notification for new task via Service Worker
+      if (newTask.date && newTask.time) {
+        const fireAt = new Date(`${newTask.date}T${newTask.time}`).getTime();
+        if (fireAt > Date.now()) {
+          scheduleNotification(newTask.id, newTask.text, fireAt);
+        }
       }
-      scheduledTimeoutRef.current = scheduleUpcomingTasks(updated);
-      
+
       return updated;
     });
     
@@ -263,14 +270,18 @@ export default function TaskList({ onTasksChange }: TaskListProps) {
 
   const toggleTask = useCallback((id: string) => {
     setTasks(prev => {
-      const updated = prev.map(t => t.id === id ? { ...t, completed: !t.completed } : t);
-      const wasCompleted = prev.find(t => t.id === id)?.completed;
-      const isNowCompleted = updated.find(t => t.id === id)?.completed;
-      
-      if (!wasCompleted && isNowCompleted) {
+      const task = prev.find(t => t.id === id);
+      const wasCompleted = task?.completed;
+
+      if (!wasCompleted) {
+        cancelNotification(id);
         updateStats({ points: 5, tasksDone: 1 });
+      } else if (task?.date && task?.time) {
+        const fireAt = new Date(`${task.date}T${task.time}`).getTime();
+        if (fireAt > Date.now()) scheduleNotification(id, task.text, fireAt);
       }
-      
+
+      const updated = prev.map(t => t.id === id ? { ...t, completed: !t.completed } : t);
       saveTasks(updated);
       onTasksChange?.(updated);
       return updated;
@@ -278,6 +289,7 @@ export default function TaskList({ onTasksChange }: TaskListProps) {
   }, [updateStats]);
 
   const deleteTask = useCallback((id: string) => {
+    cancelNotification(id);
     setTasks(prev => {
       const updated = prev.filter(t => t.id !== id);
       saveTasks(updated);

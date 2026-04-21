@@ -28,15 +28,56 @@ const disableScreenBlock = async () => {
   } catch { /* sessiz */ }
 };
 
-const WORK_DURATION = 25 * 60;
-const BREAK_DURATION = 5 * 60;
+// Default durations (can be customized via settings)
+const DEFAULT_WORK_DURATION = 25 * 60;
+const DEFAULT_SHORT_BREAK = 5 * 60;
+const DEFAULT_LONG_BREAK = 15 * 60;
+const SESSIONS_BEFORE_LONG_BREAK = 4;
+
 const BASE_POINTS = 10;
 const STREAK_BONUS = 5;
 const STREAK_THRESHOLD = 25;
 const SESSION_UPDATE_INTERVAL = 200;
 const SESSION_INCREMENT = SESSION_UPDATE_INTERVAL / 1000;
 
-type Mode = "work" | "break";
+type Mode = "work" | "shortBreak" | "longBreak";
+
+interface TimerSettings {
+  workDuration: number;
+  shortBreakDuration: number;
+  longBreakDuration: number;
+  sessionsBeforeLongBreak: number;
+}
+
+const DEFAULT_SETTINGS: TimerSettings = {
+  workDuration: DEFAULT_WORK_DURATION,
+  shortBreakDuration: DEFAULT_SHORT_BREAK,
+  longBreakDuration: DEFAULT_LONG_BREAK,
+  sessionsBeforeLongBreak: SESSIONS_BEFORE_LONG_BREAK,
+};
+
+export function getSettings(): TimerSettings {
+  if (typeof window === "undefined") return DEFAULT_SETTINGS;
+  try {
+    const saved = localStorage.getItem("yaverfx-timer-settings");
+    if (saved) return { ...DEFAULT_SETTINGS, ...JSON.parse(saved) };
+  } catch { /* ignore */ }
+  return DEFAULT_SETTINGS;
+}
+
+export function saveSettings(settings: Partial<TimerSettings>) {
+  if (typeof window === "undefined") return;
+  const current = getSettings();
+  localStorage.setItem("yaverfx-timer-settings", JSON.stringify({ ...current, ...settings }));
+}
+
+export function getDurationForMode(mode: Mode, settings: TimerSettings): number {
+  switch (mode) {
+    case "work": return settings.workDuration;
+    case "shortBreak": return settings.shortBreakDuration;
+    case "longBreak": return settings.longBreakDuration;
+  }
+}
 
 interface TimerState {
   mode: Mode;
@@ -44,6 +85,8 @@ interface TimerState {
   isRunning: boolean;
   sessionTime: number;
   endTime: number | null;
+  sessionCount: number;
+  completedPomodoros: number;
 }
 
 interface Stats {
@@ -61,14 +104,18 @@ interface TimerContextValue extends TimerState {
   progress: number;
   display: string;
   mounted: boolean;
+  settings: TimerSettings;
+  statusMessage: string;
 }
 
 const DEFAULT_STATE: TimerState = {
   mode: "work",
-  timeLeft: WORK_DURATION,
+  timeLeft: DEFAULT_WORK_DURATION,
   isRunning: false,
   sessionTime: 0,
   endTime: null,
+  sessionCount: 1,
+  completedPomodoros: 0,
 };
 
 const DEFAULT_STATS: Stats = {
@@ -108,7 +155,15 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
           return DEFAULT_STATE;
         }
         if (typeof parsed.mode === "string" && typeof parsed.timeLeft === "number") {
-          return { mode: parsed.mode, timeLeft: parsed.timeLeft, isRunning: false, sessionTime: 0, endTime: null };
+          return { 
+            mode: parsed.mode, 
+            timeLeft: parsed.timeLeft, 
+            isRunning: false, 
+            sessionTime: 0, 
+            endTime: null,
+            sessionCount: parsed.sessionCount || 1,
+            completedPomodoros: parsed.completedPomodoros || 0,
+          };
         }
       }
     } catch {
@@ -166,6 +221,7 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
     disableWakeLock();
 
     const permission = await requestNotificationPermission();
+    const settings = getSettings();
 
     if (state.mode === "work") {
       playWorkCompleteSound();
@@ -198,15 +254,37 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
     releaseLock();
 
     setTimeout(() => {
-      const nextMode = state.mode === "work" ? "break" : "work";
+      // Determine next mode
+      let nextMode: Mode;
+      let newSessionCount = state.sessionCount;
+      let newCompletedPomodoros = state.completedPomodoros;
+
+      if (state.mode === "work") {
+        // Work completed - determine break type
+        newCompletedPomodoros = state.completedPomodoros + 1;
+        if (newCompletedPomodoros % settings.sessionsBeforeLongBreak === 0) {
+          nextMode = "longBreak";
+        } else {
+          nextMode = "shortBreak";
+        }
+      } else {
+        // Break completed - back to work
+        nextMode = "work";
+        newSessionCount = state.sessionCount + 1;
+      }
+
+      const nextDuration = getDurationForMode(nextMode, settings);
+
       setState({
         ...DEFAULT_STATE,
         mode: nextMode,
-        timeLeft: nextMode === "work" ? WORK_DURATION : BREAK_DURATION,
+        timeLeft: nextDuration,
+        sessionCount: newSessionCount,
+        completedPomodoros: newCompletedPomodoros,
       });
       hasNotifiedRef.current = false;
     }, 1500);
-  }, [state.mode, state.sessionTime, disableWakeLock, releaseLock]);
+  }, [state.mode, state.sessionTime, state.sessionCount, state.completedPomodoros, disableWakeLock, releaseLock]);
 
   // Main timer interval
   useEffect(() => {
@@ -288,17 +366,48 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
     disableWakeLock();
     if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
     hasNotifiedRef.current = false;
-    setState({ ...DEFAULT_STATE, mode, timeLeft: mode === "work" ? WORK_DURATION : BREAK_DURATION });
+    const settings = getSettings();
+    const duration = getDurationForMode(mode, settings);
+    setState({ ...DEFAULT_STATE, mode, timeLeft: duration });
   }, [disableWakeLock]);
 
   const minutes = Math.floor(state.timeLeft / 60);
   const seconds = state.timeLeft % 60;
   const display = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
-  const total = state.mode === "work" ? WORK_DURATION : BREAK_DURATION;
+  const settings = getSettings();
+  const total = getDurationForMode(state.mode, settings);
   const progress = (total - state.timeLeft) / total;
 
+  // Status message based on current mode and running state
+  const getStatusMessage = (): string => {
+    if (state.isRunning) {
+      switch (state.mode) {
+        case "work": return "ZAMANINI VER";
+        case "shortBreak": return "KISA MOLA";
+        case "longBreak": return "UZUN MOLA";
+      }
+    } else {
+      switch (state.mode) {
+        case "work": return "HAZIR";
+        case "shortBreak": return "KISA MOLA";
+        case "longBreak": return "UZUN MOLA";
+      }
+    }
+  };
+
   return (
-    <TimerContext.Provider value={{ ...state, toggleTimer, resetTimer, setMode, updateStats, progress, display, mounted }}>
+    <TimerContext.Provider value={{
+      ...state,
+      toggleTimer,
+      resetTimer,
+      setMode,
+      updateStats,
+      progress,
+      display,
+      mounted,
+      settings,
+      statusMessage: getStatusMessage(),
+    }}>
       {children}
     </TimerContext.Provider>
   );

@@ -25,6 +25,12 @@ import Analytics from "./components/Analytics";
 import PixelCompanion from "./components/PixelCompanion";
 import { getAppName } from "./context/TimerContext";
 import { calculateLevel, getCompanionForLevel } from "./utils/stats";
+import {
+  scheduleNotification,
+  getScheduledNotifications,
+  cancelNotification,
+  type ScheduledNotification,
+} from "./utils/scheduledNotifications";
 
 type Page = "home" | "tasks" | "sounds" | "rewards" | "theme" | "emergency" | "analytics";
 
@@ -68,6 +74,38 @@ export default function HomePage() {
 
   const tasksRef = useRef<Task[]>([]);
   tasksRef.current = tasks;
+
+  // Register Service Worker for background notifications
+  useEffect(() => {
+    if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
+
+    navigator.serviceWorker.register("/worker-48170776ba10f829.js").catch(() => {});
+
+    const handler = (e: MessageEvent) => {
+      if (e.data?.type !== "YAVERFX_CHECK_NOTIFS_FROM_SW") return;
+      // SW woke up and asked us to check scheduled notifications
+      const now = Date.now();
+      const scheduled = getScheduledNotifications();
+      const due = scheduled.filter((n) => n.fireAt <= now);
+      if (due.length === 0) return;
+
+      // Fire each due notification via Notification API
+      due.forEach((notif) => {
+        if (Notification.permission === "granted") {
+          new Notification("YaverFX — Görev Zamani!", {
+            body: notif.taskText,
+            icon: `/characters/char_0.png`,
+            tag: `yaverfx-task-${notif.id}`,
+            requireInteraction: false,
+          });
+        }
+        cancelNotification(notif.taskId);
+      });
+    };
+
+    navigator.serviceWorker.addEventListener("message", handler);
+    return () => navigator.serviceWorker.removeEventListener("message", handler);
+  }, []);
 
   // Load stats for companion level
   useEffect(() => {

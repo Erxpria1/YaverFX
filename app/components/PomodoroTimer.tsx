@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
-import { Coffee, Pause, Play, RotateCcw, Zap } from "lucide-react";
+import { Coffee, Pause, Play, RotateCcw, Zap, Moon } from "lucide-react";
 import { useTimer } from "../context/TimerContext";
 import {
   playPixelClick,
@@ -14,6 +14,7 @@ export default function PomodoroTimer() {
   const {
     mode, isRunning, display, progress,
     toggleTimer, resetTimer, setMode, mounted,
+    sessionCount, statusMessage,
   } = useTimer();
 
   const handleToggle = useCallback(() => {
@@ -31,7 +32,7 @@ export default function PomodoroTimer() {
     resetTimer();
   }, [resetTimer]);
 
-  const handleSetMode = useCallback((m: "work" | "break") => {
+  const handleSetMode = useCallback((m: "work" | "shortBreak" | "longBreak") => {
     if (m !== mode) {
       playPixelClick();
       setMode(m);
@@ -53,15 +54,29 @@ export default function PomodoroTimer() {
   const ringRadius = (ringSize - ringStroke * 2) / 2;
   const circumference = 2 * Math.PI * ringRadius;
 
-  const accentColor = mode === "work" ? "var(--accent)" : "#4ade80";
+  const getAccentColor = () => {
+    switch (mode) {
+      case "work": return "var(--accent)";
+      case "shortBreak": return "#4ade80";
+      case "longBreak": return "#60a5fa";
+    }
+  };
+  const accentColor = getAccentColor();
+
+  const getModeLabel = () => {
+    switch (mode) {
+      case "work": return "DERIN CALISMA";
+      case "shortBreak": return "KISA MOLA";
+      case "longBreak": return "UZUN MOLA";
+    }
+  };
 
   return (
     <div className="timer-stage">
       {/* Eyebrow */}
       <div className="timer-head">
-        <span className="timer-eyebrow">
-          {mode === "work" ? "DERIN CALISMA" : "ZIHIN TAZELEME"}
-        </span>
+        <span className="timer-eyebrow">{getModeLabel()}</span>
+        <span className="session-counter">#{sessionCount}</span>
       </div>
 
       {/* Mode Toggle */}
@@ -77,12 +92,21 @@ export default function PomodoroTimer() {
         </button>
         <button
           role="tab"
-          onClick={() => handleSetMode("break")}
-          className={`mode-btn ${mode === "break" ? "active" : ""}`}
-          aria-selected={mode === "break"}
+          onClick={() => handleSetMode("shortBreak")}
+          className={`mode-btn ${mode === "shortBreak" ? "active" : ""}`}
+          aria-selected={mode === "shortBreak"}
         >
           <Coffee size={12} />
-          <span>MOLA</span>
+          <span>KISA MOLA</span>
+        </button>
+        <button
+          role="tab"
+          onClick={() => handleSetMode("longBreak")}
+          className={`mode-btn ${mode === "longBreak" ? "active" : ""}`}
+          aria-selected={mode === "longBreak"}
+        >
+          <Moon size={12} />
+          <span>UZUN MOLA</span>
         </button>
       </div>
 
@@ -125,9 +149,7 @@ export default function PomodoroTimer() {
             <span className="time-sep">:</span>
             <span className="time-sec">{secs}</span>
           </div>
-          <div className="timer-sub">
-            {isRunning ? "CALISIYOR" : "HAZIR"}
-          </div>
+          <div className="timer-sub">{statusMessage}</div>
         </div>
       </div>
 
