@@ -24,9 +24,9 @@ import SoundSettings from "./components/SoundSettings";
 import RewardSystem from "./components/RewardSystem";
 import ThemeSelector from "./components/ThemeSelector";
 import EmergencyTimer from "./components/EmergencyTimer";
-import Analytics from "./components/Analytics";
 import PixelCompanion from "./components/PixelCompanion";
 import SettingsPanel from "./components/SettingsPanel";
+import ReportPanel from "./components/ReportPanel";
 import { getAppName } from "./context/TimerContext";
 import { calculateLevel, getCompanionForLevel } from "./utils/stats";
 import {
@@ -36,7 +36,7 @@ import {
   type ScheduledNotification,
 } from "./utils/scheduledNotifications";
 
-type Page = "home" | "tasks" | "sounds" | "rewards" | "theme" | "emergency" | "analytics" | "reports" | "settings";
+type Page = "home" | "tasks" | "sounds" | "rewards" | "theme" | "emergency" | "reports" | "settings";
 
 const STORAGE_KEY_INTERVAL = "yaverfx-task-notify-hours";
 const STORAGE_KEY_TASKS = "yaverfx-tasks";
@@ -48,7 +48,6 @@ const MENU_ITEMS = [
   { id: "rewards", icon: Trophy, label: "Oduller", detail: "Ilerleme ve puanlar" },
   { id: "theme", icon: Palette, label: "Tema", detail: "Gorunumu degistir" },
   { id: "emergency", icon: Siren, label: "Acil Durakla", detail: "Kisa nefes arasi" },
-  { id: "analytics", icon: ChartNoAxesCombined, label: "Analitik", detail: "Ritmini izle" },
   { id: "reports", icon: FileBarChart, label: "Rapor", detail: "Istatistiklerini gor" },
   { id: "settings", icon: SlidersHorizontal, label: "Ayarlar", detail: "Zamanlayici ve otomatik baslatma" },
 ] as const;
@@ -214,8 +213,8 @@ export default function HomePage() {
         return <div className="page-container animate-in"><ThemeSelector /></div>;
       case "emergency":
         return <div className="page-container animate-in"><EmergencyTimer /></div>;
-      case "analytics":
-        return <div className="page-container animate-in"><Analytics /></div>;
+      case "reports":
+        return <div className="page-container animate-in"><ReportPanel /></div>;
       case "settings":
         return <div className="page-container animate-in"><SettingsPanel /></div>;
     }

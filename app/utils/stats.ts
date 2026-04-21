@@ -9,10 +9,18 @@ export interface StoredStats {
   points: number;
 }
 
+export interface DailyLogEntry {
+  date: string; // YYYY-MM-DD
+  focusMinutes: number;
+  pomodoros: number;
+}
+
 const STATS_KEY = "yaverfx-stats";
 const APP_NAME_KEY = "yaverfx-app-name";
+const DAILY_LOG_KEY = "yaverfx-daily-log";
 const DEFAULT_STATS: StoredStats = { focusTime: 0, tasksDone: 0, streak: 0, points: 0 };
 const DEFAULT_APP_NAME = "Kerem";
+const MAX_DAILY_LOG_DAYS = 90; // keep 90 days of history
 
 // ─── Stats ───────────────────────────────────────────────
 
@@ -79,4 +87,49 @@ export function setAppName(name: string): void {
   if (typeof window === "undefined") return;
   localStorage.setItem(APP_NAME_KEY, name);
   window.dispatchEvent(new CustomEvent("yaverfx-name-update"));
+}
+
+// ─── Daily Log (for Report panel) ─────────────────────────────────
+
+function getTodayStr(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+export function loadDailyLog(): DailyLogEntry[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const stored = localStorage.getItem(DAILY_LOG_KEY);
+    if (!stored) return [];
+    const parsed = JSON.parse(stored);
+    if (!Array.isArray(parsed)) return [];
+    return parsed;
+  } catch {
+    return [];
+  }
+}
+
+export function saveDailyLog(log: DailyLogEntry[]): void {
+  if (typeof window === "undefined") return;
+  // Keep only last MAX_DAILY_LOG_DAYS
+  const trimmed = log.slice(-MAX_DAILY_LOG_DAYS);
+  localStorage.setItem(DAILY_LOG_KEY, JSON.stringify(trimmed));
+}
+
+export function logTodayFocus(minutes: number): void {
+  if (typeof window === "undefined" || minutes <= 0) return;
+  const today = getTodayStr();
+  const log = loadDailyLog();
+  const todayEntry = log.find(e => e.date === today);
+  if (todayEntry) {
+    todayEntry.focusMinutes += minutes;
+    todayEntry.pomodoros += 1;
+  } else {
+    log.push({ date: today, focusMinutes: minutes, pomodoros: 1 });
+  }
+  saveDailyLog(log);
+  window.dispatchEvent(new CustomEvent("yaverfx-stats-update"));
 }

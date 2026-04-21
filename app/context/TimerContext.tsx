@@ -5,7 +5,7 @@ import NoSleep from "nosleep.js";
 import { playWorkCompleteSound, playBreakCompleteSound, requestNotificationPermission, sendBrowserNotification } from "../utils/notifications";
 import { playPixelComplete } from "../utils/pixelSound";
 import { useTimerSession } from "../hooks/useTimerSession";
-import { loadStats, saveStats } from "../utils/stats";
+import { loadStats, saveStats, logTodayFocus } from "../utils/stats";
 
 // Ubuntu screen block — timer çalışırken ekran karartmayı kapat
 const enableScreenBlock = async () => {
@@ -243,6 +243,8 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
         streak: currentStats.streak + 1,
         tasksDone: currentStats.tasksDone,
       });
+      // Log today's focus minutes for the Report panel
+      logTodayFocus(sessionMinutes);
     } else {
       playBreakCompleteSound();
       if (permission === "granted") {
