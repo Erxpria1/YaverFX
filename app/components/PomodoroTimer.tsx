@@ -1,11 +1,42 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback } from "react";
 import { Coffee, Pause, Play, RotateCcw, Zap } from "lucide-react";
 import { useTimer } from "../context/TimerContext";
+import {
+  playPixelClick,
+  playPixelStart,
+  playPixelPause,
+  playPixelComplete,
+} from "../utils/pixelSound";
 
 export default function PomodoroTimer() {
-  const { mode, isRunning, display, progress, toggleTimer, resetTimer, setMode, mounted } = useTimer();
+  const {
+    mode, isRunning, display, progress,
+    toggleTimer, resetTimer, setMode, mounted,
+  } = useTimer();
+
+  const handleToggle = useCallback(() => {
+    const wasRunning = isRunning;
+    toggleTimer();
+    if (!wasRunning) {
+      playPixelStart();
+    } else {
+      playPixelPause();
+    }
+  }, [isRunning, toggleTimer]);
+
+  const handleReset = useCallback(() => {
+    playPixelClick();
+    resetTimer();
+  }, [resetTimer]);
+
+  const handleSetMode = useCallback((m: "work" | "break") => {
+    if (m !== mode) {
+      playPixelClick();
+      setMode(m);
+    }
+  }, [mode, setMode]);
 
   if (!mounted) {
     return (
@@ -21,19 +52,15 @@ export default function PomodoroTimer() {
   const ringStroke = 6;
   const ringRadius = (ringSize - ringStroke * 2) / 2;
   const circumference = 2 * Math.PI * ringRadius;
-  const dashOffset = circumference * (1 - progress);
-
-  // SVG arc path for the progress
-  const strokeDashoffset = circumference * (1 - progress);
 
   const accentColor = mode === "work" ? "var(--accent)" : "#4ade80";
 
   return (
     <div className="timer-stage">
-      {/* Header */}
+      {/* Eyebrow */}
       <div className="timer-head">
         <span className="timer-eyebrow">
-          {mode === "work" ? "Derin çalışma" : "Zihin tazeleme"}
+          {mode === "work" ? "DERIN CALISMA" : "ZIHIN TAZELEME"}
         </span>
       </div>
 
@@ -41,21 +68,21 @@ export default function PomodoroTimer() {
       <div className="mode-toggle" role="tablist">
         <button
           role="tab"
-          onClick={() => setMode("work")}
+          onClick={() => handleSetMode("work")}
           className={`mode-btn ${mode === "work" ? "active" : ""}`}
           aria-selected={mode === "work"}
         >
-          <Zap size={14} />
-          <span>Odak</span>
+          <Zap size={12} />
+          <span>ODAK</span>
         </button>
         <button
           role="tab"
-          onClick={() => setMode("break")}
+          onClick={() => handleSetMode("break")}
           className={`mode-btn ${mode === "break" ? "active" : ""}`}
           aria-selected={mode === "break"}
         >
-          <Coffee size={14} />
-          <span>Mola</span>
+          <Coffee size={12} />
+          <span>MOLA</span>
         </button>
       </div>
 
@@ -68,16 +95,14 @@ export default function PomodoroTimer() {
           className="timer-ring-svg"
           aria-hidden="true"
         >
-          {/* Track */}
           <circle
             cx={ringSize / 2}
             cy={ringSize / 2}
             r={ringRadius}
             fill="none"
-            stroke="rgba(255,255,255,0.06)"
+            stroke="rgba(255,255,255,0.08)"
             strokeWidth={ringStroke}
           />
-          {/* Progress arc */}
           <circle
             cx={ringSize / 2}
             cy={ringSize / 2}
@@ -87,7 +112,7 @@ export default function PomodoroTimer() {
             strokeWidth={ringStroke}
             strokeLinecap="round"
             strokeDasharray={circumference}
-            strokeDashoffset={strokeDashoffset}
+            strokeDashoffset={circumference * (1 - progress)}
             transform={`rotate(-90 ${ringSize / 2} ${ringSize / 2})`}
             style={{ transition: "stroke-dashoffset 0.8s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.3s" }}
           />
@@ -101,7 +126,7 @@ export default function PomodoroTimer() {
             <span className="time-sec">{secs}</span>
           </div>
           <div className="timer-sub">
-            {isRunning ? "ODAK" : "HAZIR"}
+            {isRunning ? "CALISIYOR" : "HAZIR"}
           </div>
         </div>
       </div>
@@ -109,16 +134,16 @@ export default function PomodoroTimer() {
       {/* Controls */}
       <div className="timer-actions">
         <button
-          onClick={toggleTimer}
+          onClick={handleToggle}
           className={`action-primary ${isRunning ? "running" : ""}`}
         >
-          {isRunning ? <Pause size={20} /> : <Play size={20} />}
-          <span>{isRunning ? "Duraklat" : "Başlat"}</span>
+          {isRunning ? <Pause size={18} /> : <Play size={18} />}
+          <span>{isRunning ? "DURAKLAT" : "BASLAT"}</span>
         </button>
 
-        <button onClick={resetTimer} className="action-ghost">
-          <RotateCcw size={16} />
-          <span>Sıfırla</span>
+        <button onClick={handleReset} className="action-ghost">
+          <RotateCcw size={14} />
+          <span>SIFIRLA</span>
         </button>
       </div>
     </div>

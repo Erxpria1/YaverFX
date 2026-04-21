@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import NoSleep from "nosleep.js";
 import { playWorkCompleteSound, playBreakCompleteSound, requestNotificationPermission, sendBrowserNotification } from "../utils/notifications";
+import { playPixelComplete } from "../utils/pixelSound";
 import { useTimerSession } from "../hooks/useTimerSession";
 import { loadStats, saveStats } from "../utils/stats";
 
@@ -168,6 +169,7 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
 
     if (state.mode === "work") {
       playWorkCompleteSound();
+      playPixelComplete();
       if (permission === "granted") {
         sendBrowserNotification(
           "Çalışma seansı tamamlandı! 🎯",
