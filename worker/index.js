@@ -13,7 +13,17 @@ function getNotificationIcon() {
 
 // Push notification handler
 self.addEventListener("push", (event) => {
-  const data = event.data ? event.data.json() : { title: "YaverFX", body: "Odaklanma zamanı!" };
+  let data = { title: "YaverFX", body: "Odaklanma zamanı!" };
+  try {
+    if (event.data) {
+      data = event.data.json();
+    }
+  } catch (e) {
+    // If not JSON, try text
+    if (event.data) {
+      data.body = event.data.text();
+    }
+  }
   
   event.waitUntil(
     self.registration.showNotification(data.title, {
@@ -21,7 +31,9 @@ self.addEventListener("push", (event) => {
       icon: getNotificationIcon(),
       badge: getNotificationIcon(),
       tag: "yaverfx-notification",
-      requireInteraction: data.requireInteraction !== undefined ? data.requireInteraction : false,
+      data: data.url || "/", // Store URL to open on click
+      vibrate: [200, 100, 200],
+      requireInteraction: data.requireInteraction !== undefined ? data.requireInteraction : true, // iOS likes interaction for PWA
       silent: false
     })
   );
@@ -36,18 +48,6 @@ self.addEventListener("sync", (event) => {
         icon: getNotificationIcon(),
         badge: getNotificationIcon(),
         tag: "yaverfx-timer-notification",
-        requireInteraction: false
-      })
-    );
-  }
-  // Handle periodic task notification sync
-  if (event.tag === "yaverfx-task-notify") {
-    event.waitUntil(
-      self.registration.showNotification("YaverFX - Görev Zamanı!", {
-        body: "Sırada bekleyen görevlerin var!",
-        icon: getNotificationIcon(),
-        badge: getNotificationIcon(),
-        tag: "yaverfx-task-notification",
         requireInteraction: true
       })
     );
@@ -57,17 +57,19 @@ self.addEventListener("sync", (event) => {
 // Notification click handler
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
+  const urlToOpen = event.notification.data || "/";
+
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
       // Focus existing window if available
       for (const client of clientList) {
-        if (client.url === "/" && "focus" in client) {
+        if ("focus" in client) {
           return client.focus();
         }
       }
       // Otherwise open new window
       if (self.clients.openWindow) {
-        return self.clients.openWindow("/");
+        return self.clients.openWindow(urlToOpen);
       }
     })
   );

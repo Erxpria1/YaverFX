@@ -100,10 +100,13 @@ export function useEventTracking(): UseEventTrackingReturn {
       console.log("[Analytics]", event, properties);
     }
 
-    // Auto-flush if buffer is getting full
-    if (bufferRef.current.length >= MAX_BUFFER_SIZE) {
-      // In production, this would send to analytics endpoint
-      // For now, we just keep in localStorage
+    // Auto-flush using requestIdleCallback for battery efficiency
+    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+      window.requestIdleCallback(() => {
+        if (bufferRef.current.length >= MAX_BUFFER_SIZE) {
+          // auto-flush logic here if needed
+        }
+      }, { timeout: 2000 });
     }
   }, []);
 
@@ -144,17 +147,26 @@ export function useEventTracking(): UseEventTrackingReturn {
     if (bufferRef.current.length === 0) return;
     
     const events = [...bufferRef.current];
-    bufferRef.current = [];
-    storeEvents([]);
     
-    // In production: send to analytics endpoint
-    // fetch("/api/analytics", {
-    //   method: "POST",
-    //   headers: { "Content-Type": "application/json" },
-    //   body: JSON.stringify({ events })
-    // });
-    
-    console.log("[Analytics Flush]", events.length, "events");
+    const performFlush = () => {
+      bufferRef.current = [];
+      storeEvents([]);
+      
+      // In production: send to analytics endpoint
+      // fetch("/api/analytics", {
+      //   method: "POST",
+      //   headers: { "Content-Type": "application/json" },
+      //   body: JSON.stringify({ events })
+      // });
+      
+      console.log("[Analytics Flush]", events.length, "events");
+    };
+
+    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+      window.requestIdleCallback(performFlush, { timeout: 1000 });
+    } else {
+      performFlush();
+    }
   }, []);
 
   return {

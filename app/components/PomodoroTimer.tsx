@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Coffee, Pause, Play, RotateCcw, TimerReset, Zap } from "lucide-react";
 import { useTimer } from "../context/TimerContext";
+import FocusCrystal from "./FocusCrystal";
 
 export default function PomodoroTimer() {
   const { mode, isRunning, display, progress, toggleTimer, resetTimer, setMode, mounted } = useTimer();
@@ -58,6 +59,7 @@ export default function PomodoroTimer() {
 
         <div className={`timer-container ${isRunning ? "running" : ""}`}>
           <div className="timer-ring-wrapper">
+            <FocusCrystal mode={mode} progress={progress} />
             <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="timer-ring-svg">
               <defs>
                 <linearGradient id="timerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
