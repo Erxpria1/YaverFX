@@ -13,7 +13,6 @@ import {
   Siren,
   Sparkles,
   Trophy,
-  Waves,
   X,
 } from "lucide-react";
 import PomodoroTimer from "./components/PomodoroTimer";
@@ -35,7 +34,7 @@ const STORAGE_KEY_TASKS = "yaverfx-tasks";
 const MENU_ITEMS = [
   { id: "home", icon: Home, label: "Ana Ekran", detail: "Odak oturumu" },
   { id: "tasks", icon: CheckSquare, label: "Gorevler", detail: "Planlarini sirala" },
-  { id: "sounds", icon: Waves, label: "Sesler", detail: "Bildirim ve tiklama" },
+  { id: "sounds", icon: Settings, label: "Ayarlar", detail: "Sesler ve hatirlatmalar" },
   { id: "rewards", icon: Trophy, label: "Oduller", detail: "Ilerleme ve puanlar" },
   { id: "theme", icon: Palette, label: "Tema", detail: "Gorunumu degistir" },
   { id: "emergency", icon: Siren, label: "Acil Durakla", detail: "Kisa nefes arasi" },
@@ -63,7 +62,6 @@ export default function HomePage() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [appName, setAppName] = useState(getAppName());
   const [featuredTask, setFeaturedTask] = useState<Task | null>(null);
-  const [showSettings, setShowSettings] = useState(false);
   const [tasksLoaded, setTasksLoaded] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [points, setPoints] = useState(0);
@@ -208,7 +206,7 @@ export default function HomePage() {
         {isMenuOpen && (
           <div
             className={`menu-overlay ${isMenuOpen ? "active" : ""}`}
-            onClick={() => { setIsMenuOpen(false); setShowSettings(false); }}
+            onClick={() => { setIsMenuOpen(false); }}
             aria-hidden={!isMenuOpen}
           >
             <div className="menu-sheet" onClick={(event) => event.stopPropagation()}>
@@ -220,7 +218,7 @@ export default function HomePage() {
                 </div>
                 <button
                   className="menu-settings-btn"
-                  onClick={(e) => { e.stopPropagation(); setShowSettings(!showSettings); }}
+                  onClick={(e) => { e.stopPropagation(); setPage("sounds"); setIsMenuOpen(false); }}
                   aria-label="Ayarlar"
                 >
                   <Settings size={18} />
@@ -257,7 +255,6 @@ export default function HomePage() {
                       onClick={() => {
                         setPage(item.id as Page);
                         setIsMenuOpen(false);
-                        setShowSettings(false);
                       }}
                     >
                       <span className="menu-icon">
@@ -276,7 +273,7 @@ export default function HomePage() {
 
         <button
           className={`fab-main ${isMenuOpen ? "open" : "breathing"}`}
-          onClick={() => { setIsMenuOpen((prev) => !prev); setShowSettings(false); }}
+          onClick={() => setIsMenuOpen((prev) => !prev)}
           aria-label={isMenuOpen ? "Menuyu kapat" : "Menuyu ac"}
         >
           {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
