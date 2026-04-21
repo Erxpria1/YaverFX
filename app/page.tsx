@@ -23,6 +23,7 @@ import RewardSystem from "./components/RewardSystem";
 import ThemeSelector from "./components/ThemeSelector";
 import EmergencyTimer from "./components/EmergencyTimer";
 import Analytics from "./components/Analytics";
+import PixelCompanion from "./components/PixelCompanion";
 import { getAppName } from "./context/TimerContext";
 import { calculateLevel, getCompanionForLevel } from "./utils/stats";
 
@@ -261,7 +262,7 @@ export default function HomePage() {
             {featuredTask && (
               <div className="featured-task-card animate-in" onClick={() => { setPage("tasks"); setIsMenuOpen(false); }}>
                 <div className="featured-task-avatar">
-                  <img src={currentCompanion.image} alt="Yaver Agent" width="40" height="40" style={{ imageRendering: 'pixelated' }} />
+                  <PixelCompanion companion={currentCompanion} size={40} animate />
                   <div className="avatar-pulse" />
                 </div>
                 <div className="featured-task-content">

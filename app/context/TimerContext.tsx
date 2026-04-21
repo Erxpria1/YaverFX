@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import NoSleep from "nosleep.js";
 import { playWorkCompleteSound, playBreakCompleteSound, requestNotificationPermission, sendBrowserNotification } from "../utils/notifications";
 import { useTimerSession } from "../hooks/useTimerSession";
+import { loadStats, saveStats } from "../utils/stats";
 
 // Ubuntu screen block — timer çalışırken ekran karartmayı kapat
 const enableScreenBlock = async () => {
@@ -92,9 +93,8 @@ export function setAppName(name: string) {
 const TimerContext = createContext<TimerContextValue | undefined>(undefined);
 
 export function TimerProvider({ children }: { children: React.ReactNode }) {
-  // Tab session management for preventing race conditions
   const { acquireLock, releaseLock, isLocked, lockedByTab } = useTimerSession();
-  
+
   const [state, setState] = useState<TimerState>(() => {
     if (typeof window === "undefined") return DEFAULT_STATE;
     try {
@@ -103,19 +103,11 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
         const parsed = JSON.parse(saved);
         if (parsed.isRunning && parsed.endTime) {
           const remaining = Math.max(0, Math.round((parsed.endTime - Date.now()) / 1000));
-          if (remaining > 0) {
-            return { ...parsed, timeLeft: remaining };
-          }
+          if (remaining > 0) return { ...parsed, timeLeft: remaining };
           return DEFAULT_STATE;
         }
         if (typeof parsed.mode === "string" && typeof parsed.timeLeft === "number") {
-          return {
-            mode: parsed.mode,
-            timeLeft: parsed.timeLeft,
-            isRunning: false,
-            sessionTime: 0,
-            endTime: null,
-          };
+          return { mode: parsed.mode, timeLeft: parsed.timeLeft, isRunning: false, sessionTime: 0, endTime: null };
         }
       }
     } catch {
@@ -123,55 +115,19 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
     }
     return DEFAULT_STATE;
   });
+
   const mounted = true;
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const wakeLock = useRef<WakeLockSentinel | null>(null);
   const noSleep = useRef<NoSleep | null>(null);
-  const hasNotifiedRef = useRef(false); // Prevent double notifications
+  const hasNotifiedRef = useRef(false);
   const lockedByTabRef = useRef<string | null>(null);
-
-  const loadStats = useCallback((): Stats => {
-    try {
-      const stored = localStorage.getItem("yaverfx-stats");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (
-          typeof parsed === "object" &&
-          parsed !== null &&
-          "focusTime" in parsed &&
-          "tasksDone" in parsed &&
-          "streak" in parsed &&
-          "points" in parsed
-        ) {
-          return {
-            focusTime: Number(parsed.focusTime) || 0,
-            tasksDone: Number(parsed.tasksDone) || 0,
-            streak: Number(parsed.streak) || 0,
-            points: Number(parsed.points) || 0,
-          };
-        }
-      }
-    } catch {
-      console.warn("Failed to load stats from localStorage");
-    }
-    return DEFAULT_STATS;
-  }, []);
-
-  const saveStats = useCallback((stats: Stats) => {
-    try {
-      localStorage.setItem("yaverfx-stats", JSON.stringify(stats));
-      window.dispatchEvent(new CustomEvent('yaverfx-stats-update'));
-    } catch {
-      console.warn("Failed to save stats to localStorage");
-    }
-  }, []);
 
   const updateStats = useCallback((updates: Partial<Stats>) => {
     if (typeof window === "undefined") return;
     const current = loadStats();
-    const updated = { ...current, ...updates };
-    saveStats(updated);
-  }, [loadStats, saveStats]);
+    saveStats({ ...current, ...updates });
+  }, []);
 
   // Persist state changes
   useEffect(() => {
@@ -183,81 +139,52 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
   const enableWakeLock = useCallback(async () => {
     if (typeof window === "undefined") return;
 
-    // Wake Lock API
     if ("wakeLock" in navigator && !wakeLock.current) {
       try {
         wakeLock.current = await navigator.wakeLock.request("screen");
-        wakeLock.current.addEventListener("release", () => {
-          wakeLock.current = null;
-        });
-      } catch (err) {
-        console.warn("Wake Lock API failed:", err);
-      }
+        wakeLock.current.addEventListener("release", () => { wakeLock.current = null; });
+      } catch (err) { console.warn("Wake Lock API failed:", err); }
     }
 
-    // NoSleep.js fallback
-    if (!noSleep.current) {
-      noSleep.current = new NoSleep();
-    }
-    try {
-      await noSleep.current.enable();
-    } catch (err) {
-      console.warn("NoSleep enable failed:", err);
-    }
+    if (!noSleep.current) noSleep.current = new NoSleep();
+    try { await noSleep.current.enable(); } catch (err) { console.warn("NoSleep enable failed:", err); }
 
-    // Ubuntu: ekran karartmayı kapat (server-side xset)
     await enableScreenBlock();
   }, []);
 
   const disableWakeLock = useCallback(async () => {
-    if (wakeLock.current) {
-      wakeLock.current.release().catch(() => {});
-      wakeLock.current = null;
-    }
-    if (noSleep.current) {
-      noSleep.current.disable();
-      noSleep.current = null;
-    }
-    // Ubuntu: ekran karartmayı yeniden aktif et
+    if (wakeLock.current) { wakeLock.current.release().catch(() => {}); wakeLock.current = null; }
+    if (noSleep.current) { noSleep.current.disable(); noSleep.current = null; }
     await disableScreenBlock();
   }, []);
 
   const handleTimerComplete = useCallback(async () => {
-    // Prevent double notification
     if (hasNotifiedRef.current) return;
     hasNotifiedRef.current = true;
-    
-    // Always ensure wake lock is disabled
+
     disableWakeLock();
-    
-    // Always request fresh notification permission before sending
+
     const permission = await requestNotificationPermission();
-    
+
     if (state.mode === "work") {
-      // Play work complete sound
       playWorkCompleteSound();
-      
-      // Send browser notification if permitted
       if (permission === "granted") {
         sendBrowserNotification(
           "Çalışma seansı tamamlandı! 🎯",
           "Harika iş çıkardın, şimdi biraz dinlenme vakti. 🌿"
         );
       }
-      
-      // Calculate and save stats
       const sessionMinutes = Math.round(state.sessionTime / 60);
       const earnedPoints = BASE_POINTS + (sessionMinutes >= STREAK_THRESHOLD ? STREAK_BONUS : 0);
       const currentStats = loadStats();
-      updateStats({
+      saveStats({
         focusTime: currentStats.focusTime + sessionMinutes,
         points: currentStats.points + earnedPoints,
         streak: currentStats.streak + 1,
+        tasksDone: currentStats.tasksDone,
       });
     } else {
-      // Break complete
       playBreakCompleteSound();
-      
       if (permission === "granted") {
         sendBrowserNotification(
           "Mola süresi bitti! 🌿",
@@ -265,62 +192,39 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
         );
       }
     }
-    
-    // Release tab lock when timer completes
+
     releaseLock();
-    
-    // Schedule auto-transition to next mode after a brief delay
+
     setTimeout(() => {
       const nextMode = state.mode === "work" ? "break" : "work";
-      const duration = nextMode === "work" ? WORK_DURATION : BREAK_DURATION;
-      
-      setState(prev => ({
-        ...prev,
+      setState({
+        ...DEFAULT_STATE,
         mode: nextMode,
-        timeLeft: duration,
-        endTime: null,
-        sessionTime: 0,
-        isRunning: false,
-      }));
-      
+        timeLeft: nextMode === "work" ? WORK_DURATION : BREAK_DURATION,
+      });
       hasNotifiedRef.current = false;
     }, 1500);
-  }, [state.mode, state.sessionTime, updateStats, disableWakeLock, loadStats, releaseLock]);
+  }, [state.mode, state.sessionTime, disableWakeLock, releaseLock]);
 
   // Main timer interval
   useEffect(() => {
     if (!state.isRunning || !mounted) return;
-
-    // Clear any existing interval
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-    }
+    if (intervalRef.current) clearInterval(intervalRef.current);
 
     enableWakeLock();
 
     intervalRef.current = setInterval(() => {
       setState(prev => {
         if (!prev.endTime) return prev;
-        
         const remaining = Math.max(0, Math.round((prev.endTime - Date.now()) / 1000));
-        
+
         if (remaining === 0) {
-          // Timer complete - trigger notification
           clearInterval(intervalRef.current!);
           intervalRef.current = null;
-          
-          // Use setTimeout to avoid state update during render
-          setTimeout(() => {
-            handleTimerComplete();
-          }, 0);
-          
-          return {
-            ...prev,
-            timeLeft: 0,
-            isRunning: false,
-          };
+          setTimeout(() => handleTimerComplete(), 0);
+          return { ...prev, timeLeft: 0, isRunning: false };
         }
-        
+
         return {
           ...prev,
           timeLeft: remaining,
@@ -329,12 +233,9 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
       });
     }, SESSION_UPDATE_INTERVAL);
 
-    // Handle visibility change - reacquire wake lock when tab becomes visible
     const handleVisibilityChange = async () => {
       if (document.visibilityState === "visible" && state.isRunning) {
         await enableWakeLock();
-        
-        // Recalculate remaining time in case tab was hidden
         setState(prev => {
           if (!prev.endTime) return prev;
           const remaining = Math.max(0, Math.round((prev.endTime - Date.now()) / 1000));
@@ -350,74 +251,42 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
-
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
+      if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [state.isRunning, state.endTime, state.mode, handleTimerComplete, mounted, enableWakeLock]);
 
   const toggleTimer = useCallback(async () => {
     if (!state.isRunning) {
-      // Starting timer - request fresh permission each time
-      const permission = await requestNotificationPermission();
-      console.log("Notification permission:", permission);
-      
-      // Try to acquire tab lock
+      await requestNotificationPermission();
       const newEndTime = Date.now() + state.timeLeft * 1000;
-      const lockAcquired = acquireLock(newEndTime, state.mode);
-      
-      if (!lockAcquired) {
-        // Another tab has the lock - show feedback
+      if (!acquireLock(newEndTime, state.mode)) {
         console.warn("Timer is running in another tab:", lockedByTab);
         return;
       }
-      
       await enableWakeLock();
-      
-      setState(prev => ({
-        ...prev,
-        isRunning: true,
-        endTime: newEndTime,
-      }));
+      setState(prev => ({ ...prev, isRunning: true, endTime: newEndTime }));
     } else {
-      // Pausing timer
       disableWakeLock();
-      releaseLock(); // Release tab lock
-      setState(prev => ({
-        ...prev,
-        isRunning: false,
-        endTime: null,
-      }));
+      releaseLock();
+      setState(prev => ({ ...prev, isRunning: false, endTime: null }));
     }
   }, [state.isRunning, state.timeLeft, state.mode, enableWakeLock, disableWakeLock, acquireLock, releaseLock, lockedByTab]);
 
   const resetTimer = useCallback(() => {
     disableWakeLock();
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
+    if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
     hasNotifiedRef.current = false;
-    releaseLock(); // Release tab lock
+    releaseLock();
     setState(DEFAULT_STATE);
   }, [disableWakeLock, releaseLock]);
 
   const setMode = useCallback((mode: Mode) => {
     disableWakeLock();
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
+    if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
     hasNotifiedRef.current = false;
-    setState({
-      ...DEFAULT_STATE,
-      mode,
-      timeLeft: mode === "work" ? WORK_DURATION : BREAK_DURATION,
-    });
+    setState({ ...DEFAULT_STATE, mode, timeLeft: mode === "work" ? WORK_DURATION : BREAK_DURATION });
   }, [disableWakeLock]);
 
   const minutes = Math.floor(state.timeLeft / 60);
