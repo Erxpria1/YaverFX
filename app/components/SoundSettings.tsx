@@ -58,7 +58,7 @@ export default function SoundSettings() {
     return stored ? parseFloat(stored) : 12;
   });
 
-  // Pick a random incomplete task
+  // Pick a random incomplete task (always — no interval check)
   const tryPickFeaturedTask = useCallback(() => {
     const STORAGE_KEY_TASKS = "yaverfx-tasks";
     const stored = localStorage.getItem(STORAGE_KEY_TASKS);
@@ -68,15 +68,11 @@ export default function SoundSettings() {
       if (!Array.isArray(tasks)) return;
       const incomplete = tasks.filter((t: { completed: boolean }) => !t.completed);
       if (incomplete.length === 0) return;
-      const lastPick = localStorage.getItem("yaverfx-task-last-pick");
-      const intervalMs = (settings.notifyHours ?? 12) * 60 * 60 * 1000;
-      if (!lastPick || Date.now() - parseInt(lastPick) > intervalMs) {
-        const pick = incomplete[Math.floor(Math.random() * incomplete.length)];
-        localStorage.setItem("yaverfx-task-last-pick", String(Date.now()));
-        window.dispatchEvent(new CustomEvent("yaverfx-feature-pick", { detail: pick }));
-      }
+      const pick = incomplete[Math.floor(Math.random() * incomplete.length)];
+      localStorage.setItem("yaverfx-task-last-pick", String(Date.now()));
+      window.dispatchEvent(new CustomEvent("yaverfx-feature-pick", { detail: pick }));
     } catch {}
-  }, [settings.notifyHours]);
+  }, []);
 
   const update = useCallback((patch: Partial<SoundSettings>) => {
     const next = { ...settings, ...patch };
@@ -201,6 +197,7 @@ export default function SoundSettings() {
                 key={h}
                 onClick={() => {
                   update({ notifyHours: h });
+                  tryPickFeaturedTask();
                   if (settings.notifEnabled) playPixelComplete(settings.volume * 0.8);
                 }}
                 className={`notify-hour-btn ${notifyHours === h ? "active" : ""}`}

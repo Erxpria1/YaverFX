@@ -124,19 +124,24 @@ export default function HomePage() {
     }
   }, [tasks, featuredTask]);
 
-  // Core pick logic — reads fresh tasks from ref
+  // Core pick logic — picks if: no task exists OR interval has passed
   const tryPick = useCallback((currentTasks: Task[]) => {
+    const incomplete = currentTasks.filter((t) => !t.completed);
+    if (incomplete.length === 0) { setFeaturedTask(null); return; }
+
     const stored = localStorage.getItem("yaverfx-task-last-pick");
     const lastPick = stored ? parseInt(stored) : 0;
     const intervalMs = getIntervalMs();
 
-    if (Date.now() - lastPick > intervalMs) {
-      const incomplete = currentTasks.filter((t) => !t.completed);
-      if (incomplete.length === 0) return;
+    const hasTask = currentTasks.some((t) => t.id === featuredTask?.id && !t.completed);
+
+    // Pick if: no current task, current task completed, OR interval passed
+    if (!hasTask || !stored || Date.now() - lastPick > intervalMs) {
       const pick = incomplete[Math.floor(Math.random() * incomplete.length)];
       setFeaturedTask(pick);
       localStorage.setItem("yaverfx-task-last-pick", String(Date.now()));
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Background interval — fires every 30s
