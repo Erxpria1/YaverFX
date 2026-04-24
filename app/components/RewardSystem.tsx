@@ -19,17 +19,28 @@ export default function RewardSystem() {
   useEffect(() => {
     const handleStatsUpdate = () => setStats(loadStats());
     const handleNameUpdate = () => setAppNameState(getAppName());
+    const handleThemeUpdate = () => {
+      const t = localStorage.getItem("yaverfx-theme") as Theme;
+      if (t && ["modern", "cyber", "minimal", "pixel"].includes(t)) setCurrentTheme(t);
+    };
 
     handleStatsUpdate();
+    handleNameUpdate();
+    handleThemeUpdate();
     window.addEventListener("yaverfx-stats-update", handleStatsUpdate);
     window.addEventListener("yaverfx-name-update", handleNameUpdate);
-
-    const t = localStorage.getItem("yaverfx-theme") as Theme;
-    if (t && ["modern", "cyber", "minimal", "pixel"].includes(t)) setCurrentTheme(t);
+    window.addEventListener("yaverfx-theme-update", handleThemeUpdate);
+    window.addEventListener("storage", handleStatsUpdate);
+    window.addEventListener("storage", handleNameUpdate);
+    window.addEventListener("storage", handleThemeUpdate);
 
     return () => {
       window.removeEventListener("yaverfx-stats-update", handleStatsUpdate);
       window.removeEventListener("yaverfx-name-update", handleNameUpdate);
+      window.removeEventListener("yaverfx-theme-update", handleThemeUpdate);
+      window.removeEventListener("storage", handleStatsUpdate);
+      window.removeEventListener("storage", handleNameUpdate);
+      window.removeEventListener("storage", handleThemeUpdate);
     };
   }, []);
 

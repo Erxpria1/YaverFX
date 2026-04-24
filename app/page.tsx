@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   BellRing,
@@ -25,6 +25,7 @@ import RewardSystem from "./components/RewardSystem";
 import ThemeSelector from "./components/ThemeSelector";
 import EmergencyTimer from "./components/EmergencyTimer";
 import PixelCompanion from "./components/PixelCompanion";
+import PixelHero from "./components/PixelHero";
 import SettingsPanel from "./components/SettingsPanel";
 import ReportPanel from "./components/ReportPanel";
 import { getAppName } from "./context/TimerContext";
@@ -39,7 +40,6 @@ import {
 type Theme = "modern" | "cyber" | "minimal" | "pixel";
 type Page = "home" | "tasks" | "sounds" | "rewards" | "theme" | "emergency" | "reports" | "settings";
 
-const STORAGE_KEY_INTERVAL = "yaverfx-task-notify-hours";
 const STORAGE_KEY_TASKS = "yaverfx-tasks";
 
 const MENU_ITEMS = [
@@ -63,19 +63,12 @@ interface Task {
   note?: string;
 }
 
-function getIntervalMs(): number {
-  const stored = localStorage.getItem(STORAGE_KEY_INTERVAL);
-  const hours = parseFloat(stored ?? "12");
-  return (isNaN(hours) || hours <= 0 ? 12 : hours) * 60 * 60 * 1000;
-}
-
 export default function HomePage() {
   const router = useRouter();
   const [page, setPage] = useState<Page>("home");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [appName, setAppName] = useState(getAppName());
   const [currentTheme, setCurrentTheme] = useState<Theme>("modern");
-  const [featuredTask, setFeaturedTask] = useState<Task | null>(null);
   const [tasksLoaded, setTasksLoaded] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [points, setPoints] = useState(0);
@@ -83,20 +76,42 @@ export default function HomePage() {
   const tasksRef = useRef<Task[]>([]);
   tasksRef.current = tasks;
 
-  // Load theme from localStorage
+  const randomTask = tasksRef.current.filter((t) => !t.completed)[0];
+
   useEffect(() => {
-    const t = localStorage.getItem("yaverfx-theme") as Theme;
-    if (t && ["modern", "cyber", "minimal", "pixel"].includes(t)) {
-      setCurrentTheme(t);
-      document.documentElement.setAttribute("data-theme", t);
-    }
+    const applyTheme = () => {
+      if (typeof window === "undefined") return;
+      const t = localStorage.getItem("yaverfx-theme") as Theme;
+      if (t && ["modern", "cyber", "minimal", "pixel"].includes(t)) {
+        setCurrentTheme(t);
+        document.documentElement.setAttribute("data-theme", t);
+      }
+    };
+
+    const applyName = () => setAppName(getAppName());
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === "yaverfx-theme") applyTheme();
+      if (event.key === "yaverfx-app-name") applyName();
+    };
+
+    applyTheme();
+    applyName();
+    window.addEventListener("yaverfx-theme-update", applyTheme);
+    window.addEventListener("yaverfx-name-update", applyName);
+    window.addEventListener("storage", handleStorage);
+    return () => {
+      window.removeEventListener("yaverfx-theme-update", applyTheme);
+      window.removeEventListener("yaverfx-name-update", applyName);
+      window.removeEventListener("storage", handleStorage);
+    };
   }, []);
 
   // Register Service Worker for background notifications
   useEffect(() => {
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
 
-    navigator.serviceWorker.register("/worker-48170776ba10f829.js").catch(() => {});
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
 
     const handler = (e: MessageEvent) => {
       if (e.data?.type !== "YAVERFX_CHECK_NOTIFS_FROM_SW") return;
@@ -152,59 +167,12 @@ export default function HomePage() {
               typeof t.completed === "boolean"
           );
           setTasks(valid);
-          if (valid.length > 0) tryPick(valid);
         }
       }
     } catch {}
     setTasksLoaded(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Listen for picks from SoundSettings
-  useEffect(() => {
-    const handler = (e: Event) => {
-      setFeaturedTask((e as CustomEvent<Task>).detail);
-    };
-    window.addEventListener("yaverfx-feature-pick", handler);
-    return () => window.removeEventListener("yaverfx-feature-pick", handler);
-  }, []);
-
-  // Clear featured task if completed
-  useEffect(() => {
-    if (featuredTask) {
-      const still = tasks.find((t) => t.id === featuredTask.id);
-      if (!still || still.completed) setFeaturedTask(null);
-    }
-  }, [tasks, featuredTask]);
-
-  // Core pick logic — picks if: no task exists OR interval has passed
-  const tryPick = useCallback((currentTasks: Task[]) => {
-    const incomplete = currentTasks.filter((t) => !t.completed);
-    if (incomplete.length === 0) { setFeaturedTask(null); return; }
-
-    const stored = localStorage.getItem("yaverfx-task-last-pick");
-    const lastPick = stored ? parseInt(stored) : 0;
-    const intervalMs = getIntervalMs();
-
-    const hasTask = currentTasks.some((t) => t.id === featuredTask?.id && !t.completed);
-
-    // Pick if: no current task, current task completed, OR interval passed
-    if (!hasTask || !stored || Date.now() - lastPick > intervalMs) {
-      const pick = incomplete[Math.floor(Math.random() * incomplete.length)];
-      setFeaturedTask(pick);
-      localStorage.setItem("yaverfx-task-last-pick", String(Date.now()));
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Background interval — fires every 30s
-  useEffect(() => {
-    if (!tasksLoaded) return;
-    const interval = setInterval(() => {
-      tryPick(tasksRef.current);
-    }, 30_000);
-    return () => clearInterval(interval);
-  }, [tasksLoaded, tryPick]);
 
   const level = calculateLevel(points);
   const currentCompanion = getCompanionForLevel(level);
@@ -282,29 +250,19 @@ export default function HomePage() {
                 </button>
               </div>
 
-              {/* Featured Task Card */}
-              {featuredTask && (
-                <div
-                  className="featured-task-card animate-in"
-                  onClick={() => { setPage("tasks"); setIsMenuOpen(false); }}
-                >
-                  <div className="featured-task-avatar">
-                    <PixelCompanion companion={currentCompanion} size={40} animate theme={currentTheme} compact />
-                    <div className="avatar-pulse" />
-                  </div>
-                  <div className="featured-task-content">
-                    <span className="featured-task-label">Sirada</span>
-                    <span className="featured-task-text">{featuredTask.text}</span>
-                  </div>
-                  <ChevronRight size={16} className="featured-task-arrow" />
+              {randomTask && (
+                <div className="sirada-hero-wrapper" onClick={() => { setPage("tasks"); setIsMenuOpen(false); }}>
+                  <PixelHero
+                    theme={currentTheme}
+                    task={randomTask.text}
+                    size={100}
+                  />
                 </div>
               )}
 
               <div className="menu-grid">
                 {MENU_ITEMS.map((item) => {
                   const Icon = item.icon;
-                  const isTasks = item.id === "tasks";
-                  const showBadge = isTasks && featuredTask !== null;
                   return (
                     <button
                       key={item.id}
@@ -321,7 +279,6 @@ export default function HomePage() {
                     >
                       <span className="menu-icon">
                         <Icon size={22} />
-                        {showBadge && <span className="task-pulse-badge" />}
                       </span>
                       <span className="menu-label">{item.label}</span>
                       <span className="menu-detail">{item.detail}</span>
@@ -339,7 +296,6 @@ export default function HomePage() {
           aria-label={isMenuOpen ? "Menuyu kapat" : "Menuyu ac"}
         >
           {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
-          {!isMenuOpen && featuredTask && <span className="fab-pulse-ring" />}
         </button>
       </div>
     </div>

@@ -16,14 +16,21 @@ interface StoredStats {
   points: number;
 }
 
-const STORAGE_KEY = "yaverfx-stats";
+interface DailyLogEntry {
+  date: string;
+  focusMinutes: number;
+  pomodoros?: number;
+}
+
+const STATS_KEY = "yaverfx-stats";
+const DAILY_LOG_KEY = "yaverfx_daily_log";
 
 function loadStats(): StoredStats {
   if (typeof window === "undefined") {
     return { focusTime: 0, tasksDone: 0, streak: 0, points: 0 };
   }
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored = localStorage.getItem(STATS_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
       return {
@@ -39,31 +46,63 @@ function loadStats(): StoredStats {
   return { focusTime: 0, tasksDone: 0, streak: 0, points: 0 };
 }
 
-function generateDailyHistory(stats: StoredStats): DailyStats[] {
-  // Generate last 7 days of mock data based on current stats
-  // In production, this would be stored separately per day
-  const days: DailyStats[] = [];
-  const today = new Date();
+function loadDailyLog(): DailyLogEntry[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const stored = localStorage.getItem(DAILY_LOG_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      return Array.isArray(parsed) ? parsed : [];
+    }
+  } catch {
+    console.warn("Failed to load daily log");
+  }
+  return [];
+}
 
+function generateDailyHistory(stats: StoredStats): DailyStats[] {
+  // Use REAL daily log data from localStorage
+  const dailyLog = loadDailyLog();
+  const today = new Date();
+  const result: DailyStats[] = [];
+
+  // Get last 7 days
   for (let i = 6; i >= 0; i--) {
     const date = new Date(today);
     date.setDate(date.getDate() - i);
     const dateStr = date.toISOString().split("T")[0];
-
-    // Mock data based on streak and points (distribute across days)
-    const baseFocus = stats.focusTime / Math.max(stats.streak, 1);
-    const variance = Math.random() * 0.4 - 0.2; // ±20%
-    const focusMinutes = Math.round(baseFocus * (1 + variance));
-
-    days.push({
-      date: dateStr,
-      focusMinutes: i === 0 ? stats.focusTime : focusMinutes,
-      tasksCompleted: i === 0 ? stats.tasksDone : Math.round(focusMinutes / 25),
-      pointsEarned: i === 0 ? stats.points : Math.round(focusMinutes * 0.4),
-    });
+    
+    // Find matching daily log entry
+    const logEntry = dailyLog.find((e: DailyLogEntry) => e.date === dateStr);
+    
+    if (logEntry) {
+      // Real data from daily log
+      result.push({
+        date: dateStr,
+        focusMinutes: logEntry.focusMinutes || 0,
+        tasksCompleted: logEntry.pomodoros || 0,
+        pointsEarned: Math.round((logEntry.focusMinutes || 0) * 0.4),
+      });
+    } else if (i === 0) {
+      // Today has no log yet - use current stats as placeholder
+      result.push({
+        date: dateStr,
+        focusMinutes: stats.focusTime,
+        tasksCompleted: stats.tasksDone,
+        pointsEarned: stats.points,
+      });
+    } else {
+      // Past days with no data - show zero (no mock data)
+      result.push({
+        date: dateStr,
+        focusMinutes: 0,
+        tasksCompleted: 0,
+        pointsEarned: 0,
+      });
+    }
   }
 
-  return days;
+  return result;
 }
 
 function formatDate(dateStr: string): string {

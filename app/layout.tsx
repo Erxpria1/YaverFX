@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { ThemeScript } from "./components/ThemeScript";
 
 export const metadata: Metadata = {
   title: "YaverFX",
@@ -28,31 +29,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="tr" data-theme="modern">
+    <html lang="tr" suppressHydrationWarning>
       <head>
         <link rel="manifest" href="/manifest.json" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="YaverFX" />
         <meta name="format-detection" content="telephone=no" />
+        <ThemeScript />
       </head>
       <body className="antialiased">
         <TimerProvider>
           {children}
         </TimerProvider>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              // Set app title from localStorage or default
-              (function() {
-                var appName = localStorage.getItem('yaverfx-app-name') || 'Kerem';
-                document.title = appName;
-                var appleMeta = document.querySelector('meta[name="apple-mobile-web-app-title"]');
-                if (appleMeta) appleMeta.setAttribute('content', appName);
-              })();
-            `,
-          }}
-        />
       </body>
     </html>
   );

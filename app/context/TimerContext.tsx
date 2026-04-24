@@ -5,7 +5,9 @@ import NoSleep from "nosleep.js";
 import { playWorkCompleteSound, playBreakCompleteSound, requestNotificationPermission, sendBrowserNotification } from "../utils/notifications";
 import { playPixelComplete } from "../utils/pixelSound";
 import { useTimerSession } from "../hooks/useTimerSession";
-import { loadStats, saveStats, logTodayFocus } from "../utils/stats";
+import { loadStats, saveStats, logTodayFocus, getAppName as getStoredAppName, setAppName as setStoredAppName } from "../utils/stats";
+
+export { getStoredAppName as getAppName, setStoredAppName as setAppName };
 
 // Ubuntu screen block — timer çalışırken ekran karartmayı kapat
 const enableScreenBlock = async () => {
@@ -126,19 +128,6 @@ const DEFAULT_STATS: Stats = {
   streak: 0,
   points: 0,
 };
-
-const DEFAULT_APP_NAME = "Kerem";
-
-export function getAppName(): string {
-  if (typeof window === "undefined") return DEFAULT_APP_NAME;
-  return localStorage.getItem("yaverfx-app-name") || DEFAULT_APP_NAME;
-}
-
-export function setAppName(name: string) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem("yaverfx-app-name", name);
-  window.dispatchEvent(new CustomEvent("yaverfx-name-update"));
-}
 
 const TimerContext = createContext<TimerContextValue | undefined>(undefined);
 

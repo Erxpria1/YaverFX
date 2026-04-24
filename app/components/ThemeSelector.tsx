@@ -28,6 +28,7 @@ export default function ThemeSelector() {
     setCurrentTheme(t);
     document.documentElement.setAttribute("data-theme", t);
     localStorage.setItem("yaverfx-theme", t);
+    window.dispatchEvent(new CustomEvent("yaverfx-theme-update"));
   };
 
   return (
