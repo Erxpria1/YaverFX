@@ -1,0 +1,18 @@
+{
+  "description": "YaverFX transparent hero character assets derived from the in-app PixelHero themes; no background/card art.",
+  "canvas": {
+    "width": 512,
+    "height": 512,
+    "background": "transparent"
+  },
+  "assets": [
+    "modern-robo-neo-idle.png",
+    "modern-robo-neo-wave.png",
+    "cyber-cyber-glitch-idle.png",
+    "cyber-cyber-glitch-wave.png",
+    "minimal-ghost-w-idle.png",
+    "minimal-ghost-w-wave.png",
+    "pixel-pixel-slime-idle.png",
+    "pixel-pixel-slime-wave.png"
+  ]
+}
