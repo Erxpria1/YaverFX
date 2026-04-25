@@ -40,7 +40,7 @@ const THEMES: Record<Theme, {
     heroColor: "#ff6b6b",
     heroSecondary: "#ffd93d",
     heroAccent: "#6bcb77",
-    heroAsset: "/sirada-heroes/animated/sirada-hero-01.webp",
+    heroAsset: "/sirada-heroes/src-clean/sirada-hero-01.png",
     heroPoster: "/sirada-heroes/animated/sirada-hero-01-poster.png",
   },
   cyber: {
@@ -53,7 +53,7 @@ const THEMES: Record<Theme, {
     heroColor: "#00ffff",
     heroSecondary: "#ff00ff",
     heroAccent: "#39ff14",
-    heroAsset: "/sirada-heroes/animated/sirada-hero-07.webp",
+    heroAsset: "/sirada-heroes/src-clean/sirada-hero-07.png",
     heroPoster: "/sirada-heroes/animated/sirada-hero-07-poster.png",
   },
   minimal: {
@@ -66,7 +66,7 @@ const THEMES: Record<Theme, {
     heroColor: "#0a84ff",
     heroSecondary: "#5ac8fa",
     heroAccent: "#64d2ff",
-    heroAsset: "/sirada-heroes/animated/sirada-hero-10.webp",
+    heroAsset: "/sirada-heroes/src-clean/sirada-hero-10.png",
     heroPoster: "/sirada-heroes/animated/sirada-hero-10-poster.png",
   },
   pixel: {
@@ -79,7 +79,7 @@ const THEMES: Record<Theme, {
     heroColor: "#ff2e63",
     heroSecondary: "#ff9f43",
     heroAccent: "#a55eea",
-    heroAsset: "/sirada-heroes/animated/sirada-hero-11.webp",
+    heroAsset: "/sirada-heroes/src-clean/sirada-hero-11.png",
     heroPoster: "/sirada-heroes/animated/sirada-hero-11-poster.png",
   },
 };
@@ -349,7 +349,7 @@ export default function PixelHero({ theme = "modern", task = "", size = 100 }: P
           filter: `drop-shadow(0 0 8px ${config.heroColor}40)`,
         }}
       >
-        <div style={{ width: `${size * 0.82}px`, height: `${size * 0.82}px` }}>
+        <div style={{ width: `${size * 0.72}px`, height: `${size * 0.72}px` }}>
           <img
             src={config.heroAsset}
             alt={`${config.heroName} animated hero`}
@@ -435,8 +435,8 @@ export default function PixelHero({ theme = "modern", task = "", size = 100 }: P
           animation: siradaHeroPulse 2.667s ease-in-out infinite;
         }
         @keyframes siradaHeroPulse {
-          0%, 100% { transform: translateY(0) scale(1); }
-          50% { transform: translateY(-2px) scale(1.035); }
+          0%, 100% { transform: translateY(0) rotate(-1deg) scale(1); }
+          50% { transform: translateY(-8px) rotate(1.5deg) scale(1.045); }
         }
         .eye-blink {
           animation: blink 0.2s ease-in-out;
