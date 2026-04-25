@@ -358,8 +358,13 @@ export default function PixelHero({ theme = "modern", task = "", size = 100 }: P
           filter: `drop-shadow(0 0 8px ${config.heroColor}40)`,
         }}
       >
-        <div className="sirada-hero-stage" style={{ width: `${size * 0.72}px`, height: `${size * 0.72}px` }}>
+        <div
+          className={`sirada-hero-stage sirada-step-${walkCycle}`}
+          style={{ width: `${size * 0.72}px`, height: `${size * 0.72}px` }}
+        >
           <span className="sirada-hero-shadow" aria-hidden="true" />
+          <span className="sirada-footprint sirada-footprint-back" aria-hidden="true" />
+          <span className="sirada-footprint sirada-footprint-front" aria-hidden="true" />
           <span className="sirada-hero-aura" aria-hidden="true" />
           <span className="sirada-orbit sirada-orbit-one" aria-hidden="true" />
           <span className="sirada-orbit sirada-orbit-two" aria-hidden="true" />
@@ -489,7 +494,7 @@ export default function PixelHero({ theme = "modern", task = "", size = 100 }: P
         .sirada-hero-stage {
           position: relative;
           transform-style: preserve-3d;
-          animation: siradaStageTilt 3.8s ease-in-out infinite;
+          animation: siradaStageWalk 0.8s steps(4, end) infinite;
         }
         .sirada-hero-shadow {
           position: absolute;
@@ -500,9 +505,23 @@ export default function PixelHero({ theme = "modern", task = "", size = 100 }: P
           border-radius: 999px;
           background: radial-gradient(ellipse, ${config.heroColor}4d 0%, rgba(0, 0, 0, 0.34) 48%, transparent 72%);
           filter: blur(5px);
-          animation: siradaShadowBreathe 2.667s ease-in-out infinite;
+          animation: siradaShadowWalk 0.8s steps(4, end) infinite;
           z-index: 0;
         }
+        .sirada-footprint {
+          position: absolute;
+          bottom: 5%;
+          width: 9px;
+          height: 4px;
+          border-radius: 999px;
+          background: ${config.heroSecondary};
+          box-shadow: 0 0 8px ${config.heroSecondary};
+          opacity: 0;
+          z-index: 2;
+          animation: siradaFootPuff 0.8s steps(4, end) infinite;
+        }
+        .sirada-footprint-back { left: 29%; animation-delay: -0.2s; }
+        .sirada-footprint-front { right: 25%; animation-delay: -0.6s; }
         .sirada-hero-aura {
           position: absolute;
           inset: 8%;
@@ -566,16 +585,54 @@ export default function PixelHero({ theme = "modern", task = "", size = 100 }: P
           pointer-events: none;
           filter: saturate(1.16) contrast(1.06) drop-shadow(0 0 14px ${config.heroColor}66);
           transform-origin: center bottom;
-          animation: siradaHeroPulse 2.667s ease-in-out infinite;
+          animation: siradaHeroWalk 0.8s steps(4, end) infinite;
+        }
+        @keyframes siradaHeroWalk {
+          0% {
+            transform: translate3d(-3px, 0, 0) rotate(-3deg) skewX(2deg) scale(1.02, 0.98);
+            filter: saturate(1.13) contrast(1.05) drop-shadow(0 0 12px ${config.heroColor}55);
+          }
+          25% {
+            transform: translate3d(1px, -2px, 0) rotate(1.5deg) skewX(-1deg) scale(0.99, 1.025);
+          }
+          50% {
+            transform: translate3d(4px, 0, 0) rotate(3deg) skewX(-2deg) scale(1.02, 0.98);
+            filter: saturate(1.22) contrast(1.08) drop-shadow(0 0 18px ${config.heroColor}7a);
+          }
+          75% {
+            transform: translate3d(0, -2px, 0) rotate(-1.5deg) skewX(1deg) scale(0.99, 1.025);
+          }
+          100% {
+            transform: translate3d(-3px, 0, 0) rotate(-3deg) skewX(2deg) scale(1.02, 0.98);
+          }
         }
         @keyframes siradaHeroPulse {
           0%, 100% { transform: translateY(0) rotate(-1deg) scale(1); filter: saturate(1.12) contrast(1.05) drop-shadow(0 0 12px ${config.heroColor}55); }
           42% { transform: translateY(-7px) rotate(1.25deg) scale(1.035, 1.052); }
           56% { transform: translateY(-8px) rotate(1.5deg) scale(1.045, 1.035); filter: saturate(1.26) contrast(1.08) drop-shadow(0 0 20px ${config.heroColor}88); }
         }
+        @keyframes siradaStageWalk {
+          0% { transform: perspective(260px) rotateX(0deg) rotateY(-4deg) translateX(-1px); }
+          25% { transform: perspective(260px) rotateX(2deg) rotateY(2deg) translateX(2px); }
+          50% { transform: perspective(260px) rotateX(0deg) rotateY(4deg) translateX(1px); }
+          75% { transform: perspective(260px) rotateX(2deg) rotateY(-2deg) translateX(-2px); }
+          100% { transform: perspective(260px) rotateX(0deg) rotateY(-4deg) translateX(-1px); }
+        }
         @keyframes siradaStageTilt {
           0%, 100% { transform: perspective(260px) rotateX(0deg) rotateY(-2deg); }
           50% { transform: perspective(260px) rotateX(3deg) rotateY(3deg); }
+        }
+        @keyframes siradaShadowWalk {
+          0% { transform: translateX(-4px) scaleX(0.82); opacity: 0.62; }
+          25% { transform: translateX(1px) scaleX(1.08); opacity: 0.42; }
+          50% { transform: translateX(4px) scaleX(0.82); opacity: 0.62; }
+          75% { transform: translateX(-1px) scaleX(1.08); opacity: 0.42; }
+          100% { transform: translateX(-4px) scaleX(0.82); opacity: 0.62; }
+        }
+        @keyframes siradaFootPuff {
+          0% { transform: translate3d(2px, 0, 0) scale(0.45); opacity: 0; }
+          25% { transform: translate3d(-2px, -1px, 0) scale(1); opacity: 0.72; }
+          50%, 100% { transform: translate3d(-7px, -3px, 0) scale(1.25); opacity: 0; }
         }
         @keyframes siradaShadowBreathe {
           0%, 100% { transform: scaleX(0.9); opacity: 0.72; }
