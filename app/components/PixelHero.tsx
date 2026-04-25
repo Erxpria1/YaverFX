@@ -27,10 +27,12 @@ const THEMES: Record<Theme, {
   heroColor: string;
   heroSecondary: string;
   heroAccent: string;
+  heroAsset: string;
+  heroPoster: string;
 }> = {
   modern: {
     name: "Neo",
-    heroName: "ROBO-NEO",
+    heroName: "SIRADA-01",
     bg: "linear-gradient(145deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)",
     bgGradient: "radial-gradient(ellipse at 30% 20%, rgba(255, 107, 107, 0.15) 0%, transparent 50%), radial-gradient(ellipse at 70% 80%, rgba(255, 142, 83, 0.1) 0%, transparent 50%)",
     border: "rgba(255, 107, 107, 0.4)",
@@ -38,10 +40,12 @@ const THEMES: Record<Theme, {
     heroColor: "#ff6b6b",
     heroSecondary: "#ffd93d",
     heroAccent: "#6bcb77",
+    heroAsset: "/sirada-heroes/animated/sirada-hero-01.webp",
+    heroPoster: "/sirada-heroes/animated/sirada-hero-01-poster.png",
   },
   cyber: {
     name: "Glitch",
-    heroName: "CYBER-GLITCH",
+    heroName: "SIRADA-07",
     bg: "linear-gradient(145deg, #0d0d0d 0%, #1a0a2e 50%, #0a1628 100%)",
     bgGradient: "radial-gradient(ellipse at 20% 30%, rgba(0, 255, 255, 0.12) 0%, transparent 50%), radial-gradient(ellipse at 80% 70%, rgba(138, 43, 226, 0.1) 0%, transparent 50%)",
     border: "rgba(0, 255, 255, 0.4)",
@@ -49,10 +53,12 @@ const THEMES: Record<Theme, {
     heroColor: "#00ffff",
     heroSecondary: "#ff00ff",
     heroAccent: "#39ff14",
+    heroAsset: "/sirada-heroes/animated/sirada-hero-07.webp",
+    heroPoster: "/sirada-heroes/animated/sirada-hero-07-poster.png",
   },
   minimal: {
     name: "Ghost",
-    heroName: "GHOST-W",
+    heroName: "SIRADA-10",
     bg: "linear-gradient(145deg, #0f0f0f 0%, #1a1a1a 50%, #0d1117 100%)",
     bgGradient: "radial-gradient(ellipse at 50% 30%, rgba(10, 132, 255, 0.08) 0%, transparent 50%)",
     border: "rgba(10, 132, 255, 0.4)",
@@ -60,10 +66,12 @@ const THEMES: Record<Theme, {
     heroColor: "#0a84ff",
     heroSecondary: "#5ac8fa",
     heroAccent: "#64d2ff",
+    heroAsset: "/sirada-heroes/animated/sirada-hero-10.webp",
+    heroPoster: "/sirada-heroes/animated/sirada-hero-10-poster.png",
   },
   pixel: {
     name: "Slime",
-    heroName: "PIXEL-SLIME",
+    heroName: "SIRADA-11",
     bg: "linear-gradient(145deg, #1a0a1a 0%, #2d1b4e 50%, #1a0a2e 100%)",
     bgGradient: "radial-gradient(ellipse at 30% 20%, rgba(255, 46, 99, 0.15) 0%, transparent 50%), radial-gradient(ellipse at 70% 80%, rgba(255, 159, 67, 0.1) 0%, transparent 50%)",
     border: "rgba(255, 46, 99, 0.4)",
@@ -71,6 +79,8 @@ const THEMES: Record<Theme, {
     heroColor: "#ff2e63",
     heroSecondary: "#ff9f43",
     heroAccent: "#a55eea",
+    heroAsset: "/sirada-heroes/animated/sirada-hero-11.webp",
+    heroPoster: "/sirada-heroes/animated/sirada-hero-11-poster.png",
   },
 };
 
@@ -339,8 +349,13 @@ export default function PixelHero({ theme = "modern", task = "", size = 100 }: P
           filter: `drop-shadow(0 0 8px ${config.heroColor}40)`,
         }}
       >
-        <div style={{ width: `${size * 0.5}px`, height: `${size * 0.5}px` }}>
-          {renderHero()}
+        <div style={{ width: `${size * 0.82}px`, height: `${size * 0.82}px` }}>
+          <img
+            src={config.heroAsset}
+            alt={`${config.heroName} animated hero`}
+            className="sirada-animated-hero"
+            draggable={false}
+          />
         </div>
       </div>
       
@@ -407,6 +422,21 @@ export default function PixelHero({ theme = "modern", task = "", size = 100 }: P
           width: 100%;
           height: 100%;
           image-rendering: pixelated;
+        }
+        .sirada-animated-hero {
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+          display: block;
+          user-select: none;
+          pointer-events: none;
+          filter: saturate(1.12) contrast(1.05) drop-shadow(0 0 14px ${config.heroColor}66);
+          transform-origin: center bottom;
+          animation: siradaHeroPulse 2.667s ease-in-out infinite;
+        }
+        @keyframes siradaHeroPulse {
+          0%, 100% { transform: translateY(0) scale(1); }
+          50% { transform: translateY(-2px) scale(1.035); }
         }
         .eye-blink {
           animation: blink 0.2s ease-in-out;

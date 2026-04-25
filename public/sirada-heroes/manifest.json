@@ -1,0 +1,41 @@
+{
+  "description": "Blender-animated SIRADA hero assets selected from GPT Image 2 sheet cells 1, 7, 10, 11.",
+  "source_sheet": "openai_codex_gpt-image-2-high_20260425_160807_52aee987.png",
+  "selected": [
+    1,
+    7,
+    10,
+    11
+  ],
+  "format": "animated webp with transparent background, poster png fallback",
+  "assets": [
+    {
+      "id": 1,
+      "theme": "modern",
+      "name": "coral robot companion",
+      "animation": "/sirada-heroes/animated/sirada-hero-01.webp",
+      "poster": "/sirada-heroes/animated/sirada-hero-01-poster.png"
+    },
+    {
+      "id": 7,
+      "theme": "cyber",
+      "name": "tiny mech pilot",
+      "animation": "/sirada-heroes/animated/sirada-hero-07.webp",
+      "poster": "/sirada-heroes/animated/sirada-hero-07-poster.png"
+    },
+    {
+      "id": 10,
+      "theme": "minimal",
+      "name": "retro console creature",
+      "animation": "/sirada-heroes/animated/sirada-hero-10.webp",
+      "poster": "/sirada-heroes/animated/sirada-hero-10-poster.png"
+    },
+    {
+      "id": 11,
+      "theme": "pixel",
+      "name": "cyber monk focus buddy",
+      "animation": "/sirada-heroes/animated/sirada-hero-11.webp",
+      "poster": "/sirada-heroes/animated/sirada-hero-11-poster.png"
+    }
+  ]
+}
